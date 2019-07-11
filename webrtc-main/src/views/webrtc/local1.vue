@@ -136,8 +136,8 @@
                 this.peerA.ondatachannel = (event) => {
                     console.log(event);
                     this.channelA = event.channel;
-                    this.channelA.binaryType = 'arraybuffer'
-﻿                    this.channelA.onopen = (e) => {
+                    this.channelA.binaryType = 'arraybuffer';
+                    this.channelA.onopen = (e) => {
                         console.log('channelA onopen', e);
                     };
                     this.channelA.onclose = (e) => {
