@@ -1,17 +1,9 @@
 <template>
-    <div class="home">
-        <a href="https://github.com/wuyawei" target="_blank" class="github-logo"></a>
-        <div class="fork-me-on-github"></div>
+    <div class="many">
         <div class="center">
-            <div><router-link :to="{name: 'Speech'}">H5 语音识别</router-link></div>
-            <div><router-link :to="{name: 'communication'}">Vue 组件间通信</router-link></div>
-            <div><router-link :to="{name: 'responsive'}">Vue 响应式原理</router-link></div>
-            <div><router-link :to="{name: 'transfer'}">video 标签之间的流传输</router-link></div>
-            <div><router-link :to="{name: 'local1'}">WebRTC 1 v 1 本地对等连接</router-link></div>
-            <div><router-link :to="{name: 'remote1'}">WebRTC  1 v 1 网络对等连接</router-link></div>
-            <div><router-link :to="{name: 'many'}">多人聊天</router-link></div>
-            <div><router-link :to="{name: 'whiteboard'}">白板演示</router-link></div>
-            <div><router-link :to="{name: 'palette'}">共享画板</router-link></div>
+            登录名：<input type="text" v-model="account"> <br>
+            房间号：<input type="text" v-model="roomid"> <br>
+            <button @click="join">加入房间</button>
         </div>
     </div>
 </template>
@@ -21,77 +13,32 @@
         name: 'home',
         data() {
             return {
-                sdata: []
+                roomid: '',
+                account: ''
             }
         },
-        watch: {
-        },
         methods: {
-        },
-        mounted() {
+            join() {
+                if (this.account && this.roomid) {
+                    this.$router.push({name: 'room', params: {roomid: this.roomid, account: this.account}})
+                }
+            }
         }
     };
 </script>
 
 <style lang="scss" scoped>
-    .home{
+    .many{
         text-align: center;
-        .github-logo{
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 120px;
-            height: 120px;
-            z-index: 1;
-            background-image: url("../assets/github.png");
-            background-size: contain;
-            background-position: 10px -8px;
-            background-repeat: no-repeat;
-            display: block;
-        }
     }
     .center{
-        margin: auto;
-        font-size: 18px;
-        border: 1px solid #ddd;
-        margin-top: 100px;
-        position: relative;
-        a{
-            color: #323232;
-        }
-        div{
-            line-height: 48px;
-            border-bottom: 1px solid #ddd;
-            cursor: pointer;
-        }
-        div:last-child{
-            border-bottom: none;
-        }
-        div:hover{
-            background-color: #25b25e;
-            a{
-                display: block;
-                color: #fff;
-            }
-        }
-    }
-
-    .fork-me-on-github{
-        width: 0;
-        height: 0;
+        width:500px;
+        height: 400px;
         position: absolute;
-        right: 0;
+        left:0;
         top:0;
-        border-right: 60px solid rgba(37, 178, 94, 0.8);
-        border-top: 60px solid rgba(37, 178, 94, 0.8);
-        border-bottom: 60px solid #fff;
-        border-left: 60px solid #fff;
-    }
-    .edit-div{
-        width: 200px;
-        height: 200px;
-        display: table-cell;
-        vertical-align: middle;
-        border: 1px solid #000;
+        bottom:0;
+        right:0;
+        margin: auto;
     }
 </style>

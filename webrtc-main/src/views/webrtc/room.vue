@@ -3,6 +3,13 @@
         <div class="video-box" ref="video-box">
             <video class="video-mine" autoplay controls ref="video-mine"></video>
         </div>
+        <div class="text-box">
+            <textarea :value="receiveText"></textarea>
+            <div class="send-box">
+                <input v-model="sendText"/>
+                <button @click="sendMessage">发送</button>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -12,11 +19,14 @@
         name: 'home',
         data() {
             return {
-                roomid: '',
+                roomid: this.$route.params.roomid,
                 peer: null,
                 peerList: {},
                 candidate: null,
-                localStream: null
+                localStream: null,
+                receiveText: '',
+                sendText: '',
+                userName: this.$route.params.account
             }
         },
         watch: {
@@ -96,8 +106,13 @@
                         socket.emit('__ice_candidate', {'candidate': event.candidate, roomid: this.$route.params.roomid, account: v.account});
                     }
                 };
+
+                //dataChannel
+                peer.dataChannel = peer.createDataChannel("DataChannel", {reliable: false});
+                this.createDataChannel(peer.dataChannel) ;
                 // console.log('v.account', v.account);
                 this.peerList[v.account] = peer;
+                console.log(this.peerList, 'peerList')
             },
             createOffer(account, peer) {
                 //发送offer，发送本地session描述
@@ -121,6 +136,13 @@
                                 socket.emit('answer', {'sdp': this.peerList[v.account].localDescription, roomid: this.$route.params.roomid, account: v.account});
                             });
                         });
+                        if(this.peerList[v.account] && !this.peerList[v.account].dataChannel){
+                            this.peerList[v.account].ondatachannel = e => {
+                                console.log('receivedatachannel')
+                                this.createDataChannel(e.channel) ;
+                                this.peerList[v.account].dataChannel = e.channel ;
+                            }
+                        }
                     }, () => {// console.log(err)
                     });
                 });
@@ -144,6 +166,28 @@
                         dom.remove();
                     }
                 })
+            },
+            sendMessage(){
+                console.log(this.peerList)
+                for (let k in this.peerList) {
+                    let text = this.sendText ;
+                    text = this.userName + ': ' + text ;
+                    this.peerList[k].dataChannel.send(text) ;
+                    this.receiveText += text ;
+                    this.sendText = '' ;
+                }
+            },
+            createDataChannel(dataChannel){
+                dataChannel.onopen = (e) => {
+                    console.log(dataChannel + 'open', e) ;
+                } ;
+                dataChannel.onclose = (e) => {
+                    console.log(dataChannel + 'close', e) ;
+                } ;
+                dataChannel.onmessage = (e) => {
+                    console.log(e.data, 'data') ;
+                    this.receiveText += e.data ;
+                } ;
             }
         },
         mounted() {
@@ -153,19 +197,18 @@
                 });
                 this.socketInit();
                 socket.on('joined', (data, account)=>{
-                    console.log('joined', data);
+                    console.log('joined', data, account);
                     if (data.length> 1) {
                         data.forEach(v => {
                             let obj = {};
                             let arr = [v.account, this.$route.params.account];
-                            obj.account = arr.sort().join('-');
                             if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
-                                // console.log('obj', obj);
+                                console.log('obj', obj);
                                 this.getPeerConnection(obj);
                             }
                         });
                         if (account === this.$route.params.account) {
-                            // console.log('account', account);
+                            console.log('account', account);
                             for (let k in this.peerList) {
                                 this.createOffer(k, this.peerList[k]);
                             }
@@ -191,4 +234,32 @@
             margin-right: 10px;
         }
     }
+    .text-box {
+        margin-top: 10px;
+        text-align: left;
+        textarea {
+            width: 400px;
+            height: 300px;
+            overflow-x: hidden;
+            overflow-y: hidden;
+        }
+        .send-box{
+            overflow: hidden;
+            width: 400px;
+            input{
+                box-sizing: border-box;
+                width: 300px;
+                height: 30px;
+                margin: 5px;
+                float: left;
+            }
+            button{
+                box-sizing: border-box;
+                width: 80px;
+                height: 30px;
+                float: right;
+            }
+        }
+    }
+
 </style>
