@@ -29,13 +29,6 @@
                 userName: this.$route.params.account
             }
         },
-        watch: {
-            userList: {
-                handler() {
-                },
-                deep: true
-            }
-        },
         beforeDestroy() {
             for (let k in this.peerList) {
                 this.peerList[k].close();
@@ -68,6 +61,7 @@
                 })
             },
             getPeerConnection(v) {
+                console.log(v, 'v')
                 let videoBox = this.$refs['video-box'];
                 let iceServer = {
                     "iceServers": [
@@ -107,10 +101,22 @@
                     }
                 };
 
-                //dataChannel
-                peer.dataChannel = peer.createDataChannel("DataChannel", {reliable: false});
-                this.createDataChannel(peer.dataChannel) ;
-                // console.log('v.account', v.account);
+                //判断通道发起方
+                if(v.isOffer){
+                    peer.dataChannel = peer.createDataChannel("DataChannel");
+                    this.createDataChannel(peer.dataChannel) ;
+                    console.log('createDataChannel')
+                    console.log(this.peerList)
+                } else {
+                    console.log('ondatachannel')
+                    peer.ondatachannel = e => {
+                        this.createDataChannel(e.channel) ;
+                        peer.dataChannel = e.channel ;
+                        console.log('adddatachannel')
+                    }
+                }
+
+                peer.isOffer = v.isOffer ;
                 this.peerList[v.account] = peer;
                 console.log(this.peerList, 'peerList')
             },
@@ -120,36 +126,57 @@
                     offerToReceiveAudio: 1,
                     offerToReceiveVideo: 1
                 }).then((desc) => {
-                    // console.log('send-offer', desc);
+                    console.log('send-offer', desc, account);
                     peer.setLocalDescription(desc, () => {
                         socket.emit('offer', {'sdp': peer.localDescription, roomid: this.$route.params.roomid, account: account});
                     });
-                });
+                }).catch(e => {
+                    console.log(e)
+                })
             },
             socketInit() {
                 socket.on('offer', v => {
-                     // console.log('take_offer', this.peerList[v.account]);
-                    this.peerList[v.account] && this.peerList[v.account].setRemoteDescription(v.sdp, () => {
-                        this.peerList[v.account].createAnswer().then((desc) => {
-                            // console.log('send-answer', desc);
-                            this.peerList[v.account].setLocalDescription(desc, () => {
-                                socket.emit('answer', {'sdp': this.peerList[v.account].localDescription, roomid: this.$route.params.roomid, account: v.account});
-                            });
-                        });
-                        if(this.peerList[v.account] && !this.peerList[v.account].dataChannel){
-                            this.peerList[v.account].ondatachannel = e => {
-                                console.log('receivedatachannel')
-                                this.createDataChannel(e.channel) ;
-                                this.peerList[v.account].dataChannel = e.channel ;
-                            }
-                        }
-                    }, () => {// console.log(err)
-                    });
+                    if(v.account.indexOf(this.$route.params.account) == -1){
+                        return ;
+                    }
+                     console.log('take_offer', this.peerList[v.account], v);
+                     if(!this.peerList[v.account]){
+                         let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false ;
+                         v.isOffer = isOffer ;
+                         console.log('create')
+                         this.getPeerConnection(v)
+                     }
+                     if(!this.peerList[v.account].isOffer){
+                         this.peerList[v.account].setRemoteDescription(v.sdp, () => {
+                             console.log('setremote')
+                             this.peerList[v.account].createAnswer().then((desc) => {
+                                 console.log('send-answer', desc, v);
+                                 this.peerList[v.account].setLocalDescription(desc, () => {
+                                     socket.emit('answer', {'sdp': this.peerList[v.account].localDescription, roomid: this.$route.params.roomid, account: v.account});
+                                 });
+                             }).catch( e => {
+                                 console.log(e)
+                             });
+                         }, (err) => { console.log(err)
+                         });
+                     }
                 });
                 socket.on('answer', v => {
-                    console.log('take_answer', v.sdp);
-                    this.peerList[v.account] && this.peerList[v.account].setRemoteDescription(v.sdp, function(){}, () => {// console.log(err)
-                    });
+                    if(v.account.indexOf(this.$route.params.account) == -1){
+                        return ;
+                    }
+                    console.log('take_answer', v.sdp, v);
+                    if(!this.peerList[v.account]){
+                        let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false ;
+                        v.isOffer = isOffer ;
+                        console.log('create')
+                        this.getPeerConnection(v)
+                    }
+                    if(this.peerList[v.account].isOffer){
+                        this.peerList[v.account].setRemoteDescription(v.sdp, function(){}, () => {
+                            // console.log(err)
+                        });
+                    }
                 });
                 socket.on('__ice_candidate', v => {
                      // console.log('take_candidate', v.candidate);
@@ -168,14 +195,17 @@
                 })
             },
             sendMessage(){
-                console.log(this.peerList)
-                for (let k in this.peerList) {
-                    let text = this.sendText ;
-                    text = this.userName + ': ' + text ;
-                    this.peerList[k].dataChannel.send(text) ;
-                    this.receiveText += text ;
-                    this.sendText = '' ;
+                if(this.sendText == ''){
+                    return
                 }
+                let text = this.sendText ;
+                text = this.userName + ': ' + text ;
+                console.log(text)
+                for (let k in this.peerList) {
+                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(text) ;
+                }
+                this.receiveText += text + '\n';
+                this.sendText = '' ;
             },
             createDataChannel(dataChannel){
                 dataChannel.onopen = (e) => {
@@ -186,7 +216,7 @@
                 } ;
                 dataChannel.onmessage = (e) => {
                     console.log(e.data, 'data') ;
-                    this.receiveText += e.data ;
+                    this.receiveText += e.data + '\n';
                 } ;
             }
         },
@@ -202,17 +232,23 @@
                         data.forEach(v => {
                             let obj = {};
                             let arr = [v.account, this.$route.params.account];
+                            obj.account = arr.sort().join('-')
+                            obj.isOffer = arr[0] == this.$route.params.account ? true : false ;
                             if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
                                 console.log('obj', obj);
                                 this.getPeerConnection(obj);
+                                if(this.peerList[obj.account].isOffer){
+                                    this.createOffer(obj.account, this.peerList[obj.account])
+                                }
                             }
                         });
-                        if (account === this.$route.params.account) {
-                            console.log('account', account);
-                            for (let k in this.peerList) {
-                                this.createOffer(k, this.peerList[k]);
-                            }
-                        }
+                        // if (account === this.$route.params.account) {
+                        //     console.log('account', account);
+                        //     console.log(this.peerList, 'list')
+                        //     for (let k in this.peerList) {
+                        //         this.createOffer(k, this.peerList[k]);
+                        //     }
+                        // }
                     }
                 });
             });

@@ -61,11 +61,11 @@ app._io.on( 'connection', sock => {
         });
     });
     sock.on('offer', data=>{
-        // console.log('offer', data);
+        console.log('offer', data);
         sock.to(data.roomid).emit('offer',data);
     });
     sock.on('answer', data=>{
-        // console.log('answer', data);
+        console.log('answer', data);
         sock.to(data.roomid).emit('answer',data);
     });
     sock.on('__ice_candidate', data=>{
