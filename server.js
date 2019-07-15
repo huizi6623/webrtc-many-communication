@@ -39,8 +39,7 @@ app.use(async (ctx, next) => {
         await next();
     }
 });
-// io.on('join', ctx=>{ // event data socket.id
-// });
+
 app._io.on( 'connection', sock => {
     sock.on('join', data=>{
         sock.join(data.roomid, () => {
@@ -61,36 +60,16 @@ app._io.on( 'connection', sock => {
         });
     });
     sock.on('offer', data=>{
-        // console.log('offer', data);
+        console.log('offer', data);
         sock.to(data.roomid).emit('offer',data);
     });
     sock.on('answer', data=>{
-        // console.log('answer', data);
+        console.log('answer', data);
         sock.to(data.roomid).emit('answer',data);
     });
     sock.on('__ice_candidate', data=>{
         // console.log('__ice_candidate', data);
         sock.to(data.roomid).emit('__ice_candidate',data);
-    });
-
-    // 1 v 1
-    sock.on('apply', data=>{ // 转发申请
-        sockS[data.account].emit('apply', data);
-    });
-    sock.on('reply', data=>{ // 转发回复
-        sockS[data.account].emit('reply', data);
-    });
-    sock.on('1v1answer', data=>{ // 转发 answer
-        sockS[data.account].emit('1v1answer', data);
-    });
-    sock.on('1v1ICE', data=>{ // 转发 ICE
-        sockS[data.account].emit('1v1ICE', data);
-    });
-    sock.on('1v1offer', data=>{ // 转发 Offer
-        sockS[data.account].emit('1v1offer', data);
-    });
-    sock.on('1v1hangup', data=>{ // 转发 hangup
-        sockS[data.account].emit('1v1hangup', data);
     });
 });
 app._io.on('disconnect', (sock) => {
@@ -105,4 +84,3 @@ let port = 3001;
 app.listen(port, _ => {
     console.log('app started at port ...' + port);
 });
-// https.createServer(app.callback()).listen(3001);
