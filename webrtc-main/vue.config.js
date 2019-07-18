@@ -1,4 +1,5 @@
 // const path = require('path');
+var HtmlWebpackPlugin = require('html-webpack-plugin') ;
 
 // 拼接路径
 // function resolve (dir) {
@@ -12,7 +13,15 @@ module.exports = {
     lintOnSave: true,
     outputDir: '../public', // 默认 dist 打包文件输出位置
     assetsDir: 'static', // 打包的 js、css、font 等存放的文件夹路径 相对于 outputDir，默认 ''，直接放在 outputDir里
-    indexPath: '../public/index.html', // index.html 输出路径 默认 index.html
+    // indexPath: '../public/index.html', // index.html 输出路径 默认 index.html
+    pages: {
+        index: {
+            entry: 'src/main.js',
+            template: 'index.html',
+            filename: '../public/index.html',
+            title: '首页',
+        }
+    },
     devServer: {
         // publicPath: baseUrl, // 和 baseUrl 保持一致
         proxy: {
