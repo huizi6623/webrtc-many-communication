@@ -1,7 +1,7 @@
 <template>
     <div class="room">
         <div style="height: 0; overflow: hidden">
-        <img src='../../../static/lib/examples/demo_yanhaoran/images/target.jpg' class="img" id="targetImg">
+        <img class="img" ref="targetImg">
         </div>
 
         <video id="webcam" width="640" height="480" style="display:none;"></video>
@@ -24,9 +24,8 @@
 <script>
     import socket from '../../utils/socket';
 
-    // import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target.jpg' ;
+    import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target.jpg' ;
     import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
-
 
     export default {
         name: 'home',
@@ -393,9 +392,10 @@
                 var curr_img_pyr, prev_img_pyr, point_count, point_status, prev_xy, curr_xy;
 
                 var trainer = new FeatTrainer();
-                var targetImg = document.getElementById("targetImg");
+                var targetImg = this.$refs.targetImg;
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
                 var pattern = trainer.trainPattern(grayTarget);
+                //debugger
                 var mm_kernel = new jsfeat.motion_model.homography2d();
                 var frameId = 0
                 var homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32_t | jsfeat.C1_t);
@@ -538,7 +538,7 @@
 
 
                     var matches = trainer.matchPattern(features.descriptors , pattern.descriptors);
-                    debugger
+                    //debugger
                     var result = trainer.findTransform(matches, features.keyPoints , pattern.keyPoints);
 
                     var keyPoints;
@@ -717,7 +717,12 @@
                     }
                 });
             });
-            this.init()
+            let targetImg = this.$refs.targetImg;
+            targetImg.src = targetUrl;
+            targetImg.onload = ()=>{
+                this.init();
+            }
+
         }
     };
 </script>
