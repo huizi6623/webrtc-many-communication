@@ -1,7 +1,7 @@
 <template>
     <div class="room">
         <div style="height: 0; overflow: hidden">
-        <img src="images/target.jpg" class="img" id="targetImg">
+        <img src='../../../static/lib/examples/demo_yanhaoran/images/target.jpg' class="img" id="targetImg">
         </div>
 
         <video id="webcam" width="640" height="480" style="display:none;"></video>
@@ -24,6 +24,10 @@
 <script>
     import socket from '../../utils/socket';
 
+    // import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target.jpg' ;
+    import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
+
+
     export default {
         name: 'home',
         data() {
@@ -35,7 +39,7 @@
                 // localStream: null,
                 receiveText: '',
                 sendText: '',
-                userName: this.$route.params.account
+                userName: this.$route.params.account,
             }
         },
         beforeDestroy() {
@@ -255,7 +259,7 @@
                 // add a awesome logo to the scene
                 ;(function(){
                     var material = new THREE.SpriteMaterial({
-                        map: THREE.ImageUtils.loadTexture( 'images/awesome.png' ),
+                        map: THREE.ImageUtils.loadTexture( awesomeUrl ),
                     });
                     var geometry = new THREE.BoxGeometry(1,1,1)
                     var object3d = new THREE.Sprite(material );
@@ -534,10 +538,14 @@
 
 
                     var matches = trainer.matchPattern(features.descriptors , pattern.descriptors);
+                    debugger
                     var result = trainer.findTransform(matches, features.keyPoints , pattern.keyPoints);
 
                     var keyPoints;
-                    if (result && result.goodMatch > 8) {
+
+                    console.log(result, 'kkkkkk')
+                    if (result && result.goodMatch > 4) {
+                        console.log(result, 'kkkkkk')
                         keyPoints = result.goodPoint;
                         patternPoint = result.patternPoint;
                     } else {
@@ -756,6 +764,12 @@
                 float: right;
             }
         }
+    }
+
+    canvas{
+        position: absolute;
+        left: 0;
+        top: 0;
     }
 
 </style>
