@@ -55,7 +55,6 @@ THREEx.JsArucoMarker = function(){
 
 		// compute the pose from the canvas
 		var posit = new POS.Posit(this.modelSize, canvasElement_width);
-
         var pose = posit.pose(corners);
 		// console.assert(pose !== null)
 		if( pose === null )	return;

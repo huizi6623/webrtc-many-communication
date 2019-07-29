@@ -41,6 +41,14 @@ module.exports = {
         .symlinks(true);
         config
         .entry('index')
-        .add('babel-polyfill');
+        .add('babel-polyfill')
+        .end();
+
+        config.module
+            .rule('fbx')
+            .test(/\.fbx$/)
+            .use('file-loader')
+            .loader('file-loader')
+            .end()
     }
 };

@@ -26,6 +26,7 @@
 
     import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target.jpg' ;
     import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
+    import modelUrl from '../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx' ;
 
     export default {
         name: 'home',
@@ -209,27 +210,28 @@
             },
             init(){
                 var canvas = document.getElementById('canvas');
-                var canvasWidth  = canvas.width;
+                var canvasWidth = canvas.width;
                 var canvasHeight = canvas.height;
 
                 var flag_result = 0
+
+                var controls;
+                var startx, starty;
                 // init renderer
-                var renderer	= new THREE.WebGLRenderer({
-                    antialias	: true,
-                    alpha		: true,
+                var renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: true,
                 });
 
-                renderer.setSize( canvasWidth, canvasHeight );
+                renderer.setSize(canvasWidth, canvasHeight);
 //            renderer.setSize( window.innerWidth, window.innerHeight )
-
-                document.getElementById('model').appendChild( renderer.domElement );
-
+                document.getElementById('model').appendChild(renderer.domElement);
                 // array of functions for the rendering loop
                 var onRenderFcts = [];
 
                 // init scene and camera
                 var scene = new THREE.Scene()
-                var camera	= new THREE.PerspectiveCamera(40, canvasWidth/canvasHeight, 0.01, 1000);
+                var camera = new THREE.PerspectiveCamera(40, canvasWidth / canvasHeight, 0.01, 1000);
                 camera.position.z = 2;
 
                 //////////////////////////////////////////////////////////////////////////////////
@@ -243,69 +245,263 @@
                 //////////////////////////////////////////////////////////////////////////////////
 
                 // add some debug display
-                ;(function(){
-                    var geometry = new THREE.PlaneGeometry(1,1,10,10)
-                    var material = new THREE.MeshBasicMaterial( {
-                        wireframe : true
+                ;(function () {
+                    var geometry = new THREE.PlaneGeometry(1, 1, 10, 10)
+                    var material = new THREE.MeshBasicMaterial({
+                        wireframe: true
                     })
-                    var mesh = new THREE.Mesh(geometry, material);
-                    markerObject3D.add( mesh );
+                    var mesh1 = new THREE.Mesh(geometry, material);
+                    mesh1.name = "mesh"
+                    markerObject3D.add(mesh1);
 
-                    var mesh = new THREE.AxisHelper
-                    markerObject3D.add( mesh );
+                    var mesh2 = new THREE.AxisHelper
+                    mesh2.name = "axis"
+                    markerObject3D.add(mesh2);
                 })()
 
                 // add a awesome logo to the scene
                 ;(function(){
                     var material = new THREE.SpriteMaterial({
-                        map: THREE.ImageUtils.loadTexture( awesomeUrl ),
+                        map: THREE.ImageUtils.loadTexture(awesomeUrl),
                     });
-                    var geometry = new THREE.BoxGeometry(1,1,1)
+                    //                var geometry = new THREE.BoxGeometry(1,1,1)
                     var object3d = new THREE.Sprite(material );
                     object3d.scale.set( 1, 1, 1 );
+                    object3d.name = 'png'
                     markerObject3D.add(object3d)
                 })()
 
+                // 加载人物模型
+                ;(function(){
+                    console.log(12123123133333333333333333333333333333)
+                    var loader = new THREE.FBXLoader();
+                    loader.load('../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx',function(fbx){
+                        fbx.name = "Spiderman";
+//                fbx.rotation.y = -Math.PI/2;
+                        fbx.scale.set(0.01, 0.01, 0.01)
+                        fbx.position.set(0, 0, 0)
+
+                        markerObject3D.add(fbx)
+//                console.log(2131243123123,markerObject3D)
+
+                        initDragControls();
+                    });
+                })()
+
+                function randerBase(data) {
+                    var mesh = null;
+                    var matArray = createMaterials(data);
+                    if (data.type == "SkinnedMesh") {
+                        mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                    } else { // Mesh
+                        mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                    }
+                    meshes.push(mesh);
+                    markerObject3D.add(mesh);
+
+                }
+
+                // 初始化触控点击监听函数
+                ;(function(){
+
+//            initDragControls();
+                    document. addEventListener('click', ray);// 监听窗口鼠标单击事件
+
+                    document. addEventListener('touchend', ray);
+
+                    document.addEventListener("touchstart", function(e){
+                        startx = e.touches[0].pageX;
+                        starty = e.touches[0].pageY;
+                    }, false);
+                    //手指离开屏幕
+                    document.addEventListener("touchend", function(e) {
+//                var speedControl = document.getElementById("speed");
+                        var endx, endy;
+                        endx = e.changedTouches[0].pageX;
+                        endy = e.changedTouches[0].pageY;
+                        var direction = getDirection(startx, starty, endx, endy);
+
+                        switch (direction) {
+                            case 0:
+                                // alert("未滑动！");
+                                break;
+                            case 1:
+                                //alert("faster！");
+
+                                return n = n * 2;
+
+                                break;
+                            case 2:
+                                //alert("slower！");
+
+                                return n=n * 0.5;
+
+                                break;
+                            case 3:
+                                //alert("向左！");
+                                break;
+                            case 4:
+                                //alert("向右！");
+                                break;
+                            default:
+                                return n=1;
+                        }
+
+                    }, false);
+
+                })()
+
+                function ray(event) {
+                    // var Sx = event.clientX;//鼠标单击位置横坐标
+                    // var Sy = event.clientY;//鼠标单击位置纵坐标
+
+                    var Sx = event.clientX || event.changedTouches[0].clientX;
+                    var Sy = event.clientY || event.changedTouches[0].clientY;
+
+                    //屏幕坐标转标准设备坐标
+                    var x = ( Sx / window.innerWidth ) * 2 - 1;//标准设备横坐标
+                    var y = -( Sy / window.innerHeight ) * 2 + 1;//标准设备纵坐标
+                    var standardVector  = new THREE.Vector3(x, y, 0.5);//标准设备坐标
+
+                    //标准设备坐标转世界坐标
+                    var worldVector = standardVector.unproject(camera);
+
+                    //射线投射方向单位向量(worldVector坐标减相机位置坐标)
+                    var ray = worldVector.sub(camera.position).normalize();
+
+                    //创建射线投射器对象
+                    var raycaster = new THREE.Raycaster(camera.position, ray);
+
+                    // 获取raycaster射线和场景中所有部分相交的数组集合
+                    var intersects = raycaster.intersectObjects(meshes);
+
+                    //控制点击不同部位，产生不同动画
+                    if (intersects.length > 0) {
+                        console.log(34555555555555555555555)
+                        initDragControls();
+                        console.log(1231312312312)
+
+                    }
+                }
+
+                //根据起点终点返回方向 1向上 2向下 3向左 4向右 0未滑动
+                function getDirection(startx, starty, endx, endy) {
+                    var angx = endx - startx;
+                    var angy = endy - starty;
+                    var result = 0;
+
+                    //如果滑动距离太短
+                    if (Math.abs(angx) < 2 && Math.abs(angy) < 2) {
+                        return result;
+                    }
+
+                    var angle = getAngle(angx, angy);
+                    if (angle >= -135 && angle <= -45) {
+                        result = 1;
+                    } else if (angle > 45 && angle < 135) {
+                        result = 2;
+                    } else if ((angle >= 135 && angle <= 180) || (angle >= -180 && angle < -135)) {
+                        result = 3;
+                    } else if (angle >= -45 && angle <= 45) {
+                        result = 4;
+                    }
+
+                    return result;
+                }
+
+                function getAngle(angx, angy) {
+                    return Math.atan2(angy, angx) * 180 / Math.PI;
+                }
+
+                // 初始化控件
+                ;(function(){
+                    if (!controls)
+                        controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+                    controls.target.copy({
+                        x : 0,
+                        y : 0,
+                        z : 0
+                    });
+                })();
+                // 添加拖拽控件
+                function initDragControls() {
+                    // 添加平移控件
+                    var transformControls = new THREE.TransformControls(camera, renderer.domElement);
+                    markerObject3D.add(transformControls);
+
+                    // 过滤不是 Mesh 的物体,例如辅助网格对象
+                    var objects = [];
+                    for (let i = 0; i < markerObject3D.children.length; i++) {
+                        /*if (markerObject3D.children[i].isMesh) {
+                            console.log('afsaf', markerObject3D.children[i])
+                            objects.push(markerObject3D.children[i]);
+                        }*/
+                        console.log('afsaf', markerObject3D.children[i])
+                        objects.push(markerObject3D.children[i]);
+                    }
+
+                    console.log(111111111111,objects)
+                    // 初始化拖拽控件
+                    var dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
+
+                    // 鼠标略过事件
+                    dragControls.addEventListener('hoveron', function (event) {
+                        // 让变换控件对象和选中的对象绑定
+                        transformControls.attach(event.object);
+                    });
+                    // 开始拖拽
+                    dragControls.addEventListener('dragstart', function (event) {
+                        controls.enabled = false;
+                    });
+                    // 拖拽结束
+                    dragControls.addEventListener('dragend', function (event) {
+                        controls.enabled = true;
+                    });
+                }
                 //////////////////////////////////////////////////////////////////////////////////
                 //		render the whole thing on the page
                 //////////////////////////////////////////////////////////////////////////////////
+
                 // handle window resize
-                window.addEventListener('resize', function(){
-                    renderer.setSize(canvasWidth, canvasHeight )
-                    camera.aspect	= canvasWidth / canvasHeight
+                window.addEventListener('resize', function () {
+                    renderer.setSize(canvasWidth, canvasHeight)
+                    camera.aspect = canvasWidth / canvasHeight
                     camera.updateProjectionMatrix()
                 }, false)
-
                 // render the scene
-                onRenderFcts.push(function(){
-                    renderer.render( scene, camera );
+                onRenderFcts.push(function () {
+                    renderer.render(scene, camera);
                 })
 
                 // run the rendering loop
                 var previousTime = performance.now()
-                requestAnimationFrame(function animate(now){
-                    requestAnimationFrame( animate );
-                    onRenderFcts.forEach(function(onRenderFct){
+                requestAnimationFrame(function animate(now) {
+
+                    if (controls) controls.update();
+
+                    requestAnimationFrame(animate);
+
+                    onRenderFcts.forEach(function (onRenderFct) {
                         onRenderFct(now, now - previousTime)
                     })
 
-                    previousTime	= now
+                    previousTime = now
                 })
-
                 //////////////////////////////////////////////////////////////////////////////////
                 //		Do the Augmented Reality part
                 //////////////////////////////////////////////////////////////////////////////////
 
                 // init the marker recognition
-                var jsArucoMarker	= new THREEx.JsArucoMarker()
+                var jsArucoMarker = new THREEx.JsArucoMarker()
 
                 //////////////////////////////////////////////////////////////////////////////////
                 //		Process video source to find markers
                 //////////////////////////////////////////////////////////////////////////////////
                 // set the markerObject3D as visible
-                markerObject3D.visible	= false
+                markerObject3D.visible = false
                 // process the image source with the marker recognition
-                onRenderFcts.push(function(){
+                onRenderFcts.push(function () {
                     markerObject3D.visible = false
 
                     // see if this.markerId has been found
@@ -316,21 +512,17 @@
                     var temp1 = shape_pts[1]
                     var temp2 = shape_pts[2]
                     var temp3 = shape_pts[3]
-//                console.log(temp0,temp1,temp2,temp3)
+
                     shape_pts[0] = temp0
                     shape_pts[1] = temp3
                     shape_pts[2] = temp2
                     shape_pts[3] = temp1
                     if (flag_result > 0) {
-
                         jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
                     }
-                    console.log(markerObject3D.position)
-//                jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
 
                     markerObject3D.visible = true
                 })
-//---------------------------------------------------------------------------
 
                 var WIDTH = 640;
                 var HEIGHT = 480;
@@ -338,15 +530,15 @@
                 var video = document.getElementById('webcam');
                 try {
                     var attempts = 0;
-                    var readyListener = function(event) {
+                    var readyListener = function (event) {
                         findVideoSize();
                     };
-                    var findVideoSize = function() {
-                        if(video.videoWidth > 0 && video.videoHeight > 0) {
+                    var findVideoSize = function () {
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
                             video.removeEventListener('loadeddata', readyListener);
                             onDimensionsReady(video.videoWidth, video.videoHeight);
                         } else {
-                            if(attempts < 10) {
+                            if (attempts < 10) {
                                 attempts++;
                                 setTimeout(findVideoSize, 200);
                             } else {
@@ -354,7 +546,7 @@
                             }
                         }
                     };
-                    var onDimensionsReady = function(width, height) {
+                    var onDimensionsReady = function (width, height) {
                         console.log(width)
                         demo_app(width, height);
                         compatibility.requestAnimationFrame(tick);
@@ -362,14 +554,14 @@
 
                     video.addEventListener('loadeddata', readyListener);
 
-                    compatibility.getUserMedia({video: true}, function(stream) {
+                    compatibility.getUserMedia({video: true}, function (stream) {
                         // compatibility.getUserMediaNew(function(stream) {
                         try {
                             video.srcObject = stream;
                         } catch (error) {
                             video.src = stream;
                         }
-                        setTimeout(function() {
+                        setTimeout(function () {
                             video.play();
                         }, 500);
                     }, function (error) {
@@ -388,21 +580,20 @@
                 var stat = new profiler();
 
 //            var gui,options,ctx,canvasWidth,canvasHeight;
-                var gui,options,ctx;
+                var gui, options, ctx;
                 var curr_img_pyr, prev_img_pyr, point_count, point_status, prev_xy, curr_xy;
 
                 var trainer = new FeatTrainer();
-                var targetImg = this.$refs.targetImg;
+                var targetImg = document.getElementById("targetImg");
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
                 var pattern = trainer.trainPattern(grayTarget);
-                //debugger
                 var mm_kernel = new jsfeat.motion_model.homography2d();
                 var frameId = 0
                 var homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32_t | jsfeat.C1_t);
-                var match_mask = new jsfeat.matrix_t(500,1,jsfeat.U8C1_t);
+                var match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
                 // var mm_kernel = new jsfeat.motion_model.affine2d();
 
-                var demo_opt = function(){
+                var demo_opt = function () {
                     this.win_size = 20;
                     this.max_iterations = 30;
                     this.epsilon = 0.01;
@@ -410,8 +601,6 @@
                 }
 
                 function demo_app(videoWidth, videoHeight) {
-//                canvasWidth  = canvas.width;
-//                canvasHeight = canvas.height;
                     ctx = canvas.getContext('2d');
 
                     ctx.fillStyle = "rgb(0,255,0)";
@@ -419,13 +608,13 @@
 
                     curr_img_pyr = new jsfeat.pyramid_t(3);
                     prev_img_pyr = new jsfeat.pyramid_t(3);
-                    curr_img_pyr.allocate(WIDTH, HEIGHT, jsfeat.U8_t|jsfeat.C1_t);
-                    prev_img_pyr.allocate(WIDTH, HEIGHT, jsfeat.U8_t|jsfeat.C1_t);
+                    curr_img_pyr.allocate(WIDTH, HEIGHT, jsfeat.U8_t | jsfeat.C1_t);
+                    prev_img_pyr.allocate(WIDTH, HEIGHT, jsfeat.U8_t | jsfeat.C1_t);
 
                     point_count = 0;
                     point_status = new Uint8Array(100);
-                    prev_xy = new Float32Array(100*2);
-                    curr_xy = new Float32Array(100*2);
+                    prev_xy = new Float32Array(100 * 2);
+                    curr_xy = new Float32Array(100 * 2);
 
                     options = new demo_opt();
                     gui = new dat.GUI();
@@ -467,7 +656,7 @@
 
                         stat.start("通过光流追踪已有特征点");
                         var start_time = new Date().getTime();
-                        jsfeat.optical_flow_lk.track(prev_img_pyr, curr_img_pyr, prev_xy, curr_xy, point_count, options.win_size|0, options.max_iterations|0, point_status, options.epsilon, options.min_eigen);
+                        jsfeat.optical_flow_lk.track(prev_img_pyr, curr_img_pyr, prev_xy, curr_xy, point_count, options.win_size | 0, options.max_iterations | 0, point_status, options.epsilon, options.min_eigen);
                         var run_time = (new Date().getTime() - start_time);
                         console.log('光流耗时：' + run_time + ' ms');
                         stat.stop("通过光流追踪已有特征点");
@@ -478,8 +667,6 @@
                             // console.log(curr_xy);
                             // mm_kernel.run(format_xy(pattern_xy, point_count), format_xy(curr_xy, point_count), homo3x3, point_count);
                             var result = calculate_transform(format_xy(pattern_xy, point_count), format_xy(curr_xy, point_count), point_count);
-                            // filterPoint();
-                            // console.log('good_match:' + result.goodMatch);
                             if (result.goodMatch > 6) {
                                 flag_result = 1
                                 var shape_pts = tCorners(homo3x3.data, 520, 524);
@@ -495,16 +682,13 @@
                                 shape_pts[3] = temp1
                                 render_pattern_shape(ctx, shape_pts);
                             }
-                            else{
+                            else {
                                 flag_result = 0
                             }
-                            // console.log('point_count:' + point_count);
-                            // console.log('pattern_count: ' + format_xy(pattern_xy, point_count).length);
-                            // console.log('curr_count: ' + format_xy(curr_xy, point_count).length);
                         }
+
                         stat.stop("计算单应性矩阵");
                         // prune_oflow_points(ctx);
-
                         if (frameId % 60 === 0 || point_count <= 4) {
                             stat.start("刷新特征点");
                             var start_time = new Date().getTime();
@@ -520,12 +704,13 @@
                 }
 
                 var patternPoint;
-                var pattern_xy = new Float32Array(100*2);
-                function format_xy(xy,count) {
+                var pattern_xy = new Float32Array(100 * 2);
+
+                function format_xy(xy, count) {
                     var new_xy = [];
                     var tmp = 0;
                     for (var i = 0; i < count; ++i) {
-                        new_xy[i]= {"x":xy[tmp++], "y":xy[tmp++]};
+                        new_xy[i] = {"x": xy[tmp++], "y": xy[tmp++]};
                     }
                     return new_xy;
                 }
@@ -536,16 +721,11 @@
                     var grayImage = trainer.getGrayScaleMat(imageData);
                     var features = trainer.describeFeatures(grayImage);
 
-
-                    var matches = trainer.matchPattern(features.descriptors , pattern.descriptors);
-                    //debugger
-                    var result = trainer.findTransform(matches, features.keyPoints , pattern.keyPoints);
+                    var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
+                    var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);
 
                     var keyPoints;
-
-                    console.log(result, 'kkkkkk')
-                    if (result && result.goodMatch > 4) {
-                        console.log(result, 'kkkkkk')
+                    if (result && result.goodMatch > 8) {
                         keyPoints = result.goodPoint;
                         patternPoint = result.patternPoint;
                     } else {
@@ -561,10 +741,8 @@
                         }
                     }
                     point_count = keyPoints.length;
-                    // console.log(point_count);
-                    // console.log(format_xy(pattern_xy, point_count));
-
                 }
+
                 canvas.addEventListener('click', on_canvas_click, false);
 
                 function calculate_transform(pattern_xy, screen_xy, count) {
@@ -581,9 +759,9 @@
 
                     // extract good matches and re-estimate
                     var good_cnt = 0;
-                    if(ok) {
-                        for(var i=0; i < count; ++i) {
-                            if(match_mask.data[i]) {
+                    if (ok) {
+                        for (var i = 0; i < count; ++i) {
+                            if (match_mask.data[i]) {
                                 pattern_xy[good_cnt].x = pattern_xy[i].x;
                                 pattern_xy[good_cnt].y = pattern_xy[i].y;
                                 screen_xy[good_cnt].x = screen_xy[i].x;
@@ -597,9 +775,7 @@
                         jsfeat.matmath.identity_3x3(homo3x3, 1.0);
                     }
 
-                    // console.log(pattern_xy);
-                    // return good_cnt;
-                    return { goodMatch: good_cnt, goodPoint: screen_xy, patternPoint: pattern_xy };
+                    return {goodMatch: good_cnt, goodPoint: screen_xy, patternPoint: pattern_xy};
                 }
 
                 function filterPoint() {
@@ -617,81 +793,57 @@
 
                 }
 
-                /*  function draw_circle(ctx, x, y) {
-                      ctx.beginPath();
-                      ctx.arc(x, y, 2, 0, Math.PI*2, true);
-                      ctx.closePath();
-                      ctx.fill();
-                  }*/
-
                 function tCorners(M, w, h) {
-                    var pt = [ {'x':0,'y':0}, {'x':w,'y':0}, {'x':w,'y':h}, {'x':0,'y':h} ];
-                    var z=0.0, i=0, px=0.0, py=0.0;
+                    var pt = [{'x': 0, 'y': 0}, {'x': w, 'y': 0}, {'x': w, 'y': h}, {'x': 0, 'y': h}];
+                    var z = 0.0, i = 0, px = 0.0, py = 0.0;
 
                     for (; i < 4; ++i) {
-                        px = M[0]*pt[i].x + M[1]*pt[i].y + M[2];
-                        py = M[3]*pt[i].x + M[4]*pt[i].y + M[5];
-                        z = M[6]*pt[i].x + M[7]*pt[i].y + M[8];
-                        pt[i].x = px/z;
-                        pt[i].y = py/z;
+                        px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
+                        py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
+                        z = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
+                        pt[i].x = px / z;
+                        pt[i].y = py / z;
                     }
 
                     return pt;
                 }
 
                 function render_pattern_shape(ctx, shape_pts) {
-                    // get the projected pattern corners
-                    // target图像长宽
                     ctx.strokeStyle = "rgb(0,255,0)";
                     ctx.beginPath();
 
-                    ctx.moveTo(shape_pts[0].x,shape_pts[0].y);
-                    ctx.lineTo(shape_pts[1].x,shape_pts[1].y);
-                    ctx.lineTo(shape_pts[2].x,shape_pts[2].y);
-                    ctx.lineTo(shape_pts[3].x,shape_pts[3].y);
-                    ctx.lineTo(shape_pts[0].x,shape_pts[0].y);
+                    ctx.moveTo(shape_pts[0].x, shape_pts[0].y);
+                    ctx.lineTo(shape_pts[1].x, shape_pts[1].y);
+                    ctx.lineTo(shape_pts[2].x, shape_pts[2].y);
+                    ctx.lineTo(shape_pts[3].x, shape_pts[3].y);
+                    ctx.lineTo(shape_pts[0].x, shape_pts[0].y);
 
-                    ctx.lineWidth=4;
+                    ctx.lineWidth = 4;
                     ctx.stroke();
                 }
 
-                /*function prune_oflow_points(ctx) {
-                    var n = point_count;
-                    var i=0,j=0;
-
-                    for(; i < n; ++i) {
-                        if(point_status[i] == 1) {
-                            if(j < i) {
-                                curr_xy[j<<1] = curr_xy[i<<1];
-                                curr_xy[(j<<1)+1] = curr_xy[(i<<1)+1];
-                            }
-                            draw_circle(ctx, curr_xy[j<<1], curr_xy[(j<<1)+1]);
-                            ++j;
-                        }
-                    }
-                    point_count = j;
-                }*/
-
                 function relMouseCoords(event) {
-                    var totalOffsetX=0,totalOffsetY=0,canvasX=0,canvasY=0;
+                    var totalOffsetX = 0, totalOffsetY = 0, canvasX = 0, canvasY = 0;
                     var currentElement = this;
 
                     do {
                         totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
                         totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
-                    } while(currentElement = currentElement.offsetParent)
+                    } while (currentElement = currentElement.offsetParent)
 
                     canvasX = event.pageX - totalOffsetX;
                     canvasY = event.pageY - totalOffsetY;
 
-                    return {x:canvasX, y:canvasY}
+                    return {x: canvasX, y: canvasY}
                 }
+
                 HTMLCanvasElement.prototype.relMouseCoords = relMouseCoords;
 
-                $(window).unload(function() {
+                $(window).unload(function () {
                     video.pause();
-                    video.src=null;
+                    video.src = null;
                 });
+
             }
         },
         mounted() {
