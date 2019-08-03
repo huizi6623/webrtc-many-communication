@@ -24,7 +24,7 @@
 <script>
     import socket from '../../utils/socket';
 
-    import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target.jpg' ;
+    import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target1.jpg' ;
     import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
     import modelUrl from '../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx' ;
 
@@ -215,8 +215,11 @@
 
                 var flag_result = 0
 
+
                 var controls;
                 var startx, starty;
+
+
                 // init renderer
                 var renderer = new THREE.WebGLRenderer({
                     antialias: true,
@@ -225,7 +228,11 @@
 
                 renderer.setSize(canvasWidth, canvasHeight);
 //            renderer.setSize( window.innerWidth, window.innerHeight )
+
+
                 document.getElementById('model').appendChild(renderer.domElement);
+
+
                 // array of functions for the rendering loop
                 var onRenderFcts = [];
 
@@ -257,25 +264,29 @@
                     var mesh2 = new THREE.AxisHelper
                     mesh2.name = "axis"
                     markerObject3D.add(mesh2);
+
                 })()
 
                 // add a awesome logo to the scene
                 ;(function(){
                     var material = new THREE.SpriteMaterial({
-                        map: THREE.ImageUtils.loadTexture(awesomeUrl),
+                        map: THREE.ImageUtils.loadTexture( awesomeUrl),
                     });
                     //                var geometry = new THREE.BoxGeometry(1,1,1)
                     var object3d = new THREE.Sprite(material );
                     object3d.scale.set( 1, 1, 1 );
                     object3d.name = 'png'
                     markerObject3D.add(object3d)
+
                 })()
 
                 // 加载人物模型
                 ;(function(){
                     console.log(12123123133333333333333333333333333333)
                     var loader = new THREE.FBXLoader();
-                    loader.load('../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx',function(fbx){
+                    loader.load(modelUrl,function(fbx){
+
+
                         fbx.name = "Spiderman";
 //                fbx.rotation.y = -Math.PI/2;
                         fbx.scale.set(0.01, 0.01, 0.01)
@@ -286,9 +297,18 @@
 
                         initDragControls();
                     });
+
+
                 })()
 
+
+
+
+
                 function randerBase(data) {
+
+
+
                     var mesh = null;
                     var matArray = createMaterials(data);
                     if (data.type == "SkinnedMesh") {
@@ -300,6 +320,8 @@
                     markerObject3D.add(mesh);
 
                 }
+
+
 
                 // 初始化触控点击监听函数
                 ;(function(){
@@ -351,7 +373,10 @@
 
                 })()
 
+
+
                 function ray(event) {
+
                     // var Sx = event.clientX;//鼠标单击位置横坐标
                     // var Sy = event.clientY;//鼠标单击位置纵坐标
 
@@ -374,6 +399,8 @@
 
                     // 获取raycaster射线和场景中所有部分相交的数组集合
                     var intersects = raycaster.intersectObjects(meshes);
+
+
 
                     //控制点击不同部位，产生不同动画
                     if (intersects.length > 0) {
@@ -413,6 +440,7 @@
                     return Math.atan2(angy, angx) * 180 / Math.PI;
                 }
 
+
                 // 初始化控件
                 ;(function(){
                     if (!controls)
@@ -424,6 +452,9 @@
                         z : 0
                     });
                 })();
+
+
+
                 // 添加拖拽控件
                 function initDragControls() {
                     // 添加平移控件
@@ -459,6 +490,10 @@
                         controls.enabled = true;
                     });
                 }
+
+
+//        initDragControls()
+
                 //////////////////////////////////////////////////////////////////////////////////
                 //		render the whole thing on the page
                 //////////////////////////////////////////////////////////////////////////////////
@@ -469,6 +504,8 @@
                     camera.aspect = canvasWidth / canvasHeight
                     camera.updateProjectionMatrix()
                 }, false)
+
+
                 // render the scene
                 onRenderFcts.push(function () {
                     renderer.render(scene, camera);
@@ -488,9 +525,11 @@
 
                     previousTime = now
                 })
+
                 //////////////////////////////////////////////////////////////////////////////////
                 //		Do the Augmented Reality part
                 //////////////////////////////////////////////////////////////////////////////////
+
 
                 // init the marker recognition
                 var jsArucoMarker = new THREEx.JsArucoMarker()
@@ -518,11 +557,21 @@
                     shape_pts[2] = temp2
                     shape_pts[3] = temp1
                     if (flag_result > 0) {
+
                         jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
                     }
+                    //输出模型位置坐标
+//            console.log(markerObject3D.position)
+
+
+//                jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
 
                     markerObject3D.visible = true
                 })
+
+
+//---------------------------------------------------------------------------
+
 
                 var WIDTH = 640;
                 var HEIGHT = 480;
@@ -584,7 +633,7 @@
                 var curr_img_pyr, prev_img_pyr, point_count, point_status, prev_xy, curr_xy;
 
                 var trainer = new FeatTrainer();
-                var targetImg = document.getElementById("targetImg");
+                var targetImg = this.$refs.targetImg
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
                 var pattern = trainer.trainPattern(grayTarget);
                 var mm_kernel = new jsfeat.motion_model.homography2d();
@@ -601,6 +650,8 @@
                 }
 
                 function demo_app(videoWidth, videoHeight) {
+//                canvasWidth  = canvas.width;
+//                canvasHeight = canvas.height;
                     ctx = canvas.getContext('2d');
 
                     ctx.fillStyle = "rgb(0,255,0)";
@@ -630,6 +681,7 @@
                     stat.add("计算单应性矩阵");
                     stat.add("刷新特征点");
                 }
+
 
                 function tick() {
                     compatibility.requestAnimationFrame(tick);
@@ -667,6 +719,8 @@
                             // console.log(curr_xy);
                             // mm_kernel.run(format_xy(pattern_xy, point_count), format_xy(curr_xy, point_count), homo3x3, point_count);
                             var result = calculate_transform(format_xy(pattern_xy, point_count), format_xy(curr_xy, point_count), point_count);
+                            // filterPoint();
+                            // console.log('good_match:' + result.goodMatch);
                             if (result.goodMatch > 6) {
                                 flag_result = 1
                                 var shape_pts = tCorners(homo3x3.data, 520, 524);
@@ -680,15 +734,23 @@
                                 shape_pts[1] = temp3
                                 shape_pts[2] = temp2
                                 shape_pts[3] = temp1
+
+
                                 render_pattern_shape(ctx, shape_pts);
                             }
                             else {
                                 flag_result = 0
                             }
+                            // console.log('point_count:' + point_count);
+                            // console.log('pattern_count: ' + format_xy(pattern_xy, point_count).length);
+                            // console.log('curr_count: ' + format_xy(curr_xy, point_count).length);
+
                         }
 
                         stat.stop("计算单应性矩阵");
                         // prune_oflow_points(ctx);
+
+
                         if (frameId % 60 === 0 || point_count <= 4) {
                             stat.start("刷新特征点");
                             var start_time = new Date().getTime();
@@ -716,10 +778,13 @@
                 }
 
                 function on_canvas_click(e) {
+
+
                     var imageData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
                     // var trainer = new FeatTrainer();
                     var grayImage = trainer.getGrayScaleMat(imageData);
                     var features = trainer.describeFeatures(grayImage);
+
 
                     var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
                     var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);
@@ -732,6 +797,7 @@
                         keyPoints = features.keyPoints;
                     }
 
+
                     for (var i = 0; i < keyPoints.length; ++i) {
                         if (keyPoints[i].x < canvasWidth & keyPoints[i].y < canvasHeight) {
                             curr_xy[i << 1] = keyPoints[i].x;
@@ -741,6 +807,9 @@
                         }
                     }
                     point_count = keyPoints.length;
+                    // console.log(point_count);
+                    // console.log(format_xy(pattern_xy, point_count));
+
                 }
 
                 canvas.addEventListener('click', on_canvas_click, false);
@@ -793,6 +862,13 @@
 
                 }
 
+                /*  function draw_circle(ctx, x, y) {
+                 ctx.beginPath();
+                 ctx.arc(x, y, 2, 0, Math.PI*2, true);
+                 ctx.closePath();
+                 ctx.fill();
+                 }*/
+
                 function tCorners(M, w, h) {
                     var pt = [{'x': 0, 'y': 0}, {'x': w, 'y': 0}, {'x': w, 'y': h}, {'x': 0, 'y': h}];
                     var z = 0.0, i = 0, px = 0.0, py = 0.0;
@@ -809,6 +885,10 @@
                 }
 
                 function render_pattern_shape(ctx, shape_pts) {
+                    // get the projected pattern corners
+                    // target图像长宽
+
+
                     ctx.strokeStyle = "rgb(0,255,0)";
                     ctx.beginPath();
 
@@ -821,6 +901,23 @@
                     ctx.lineWidth = 4;
                     ctx.stroke();
                 }
+
+                /*function prune_oflow_points(ctx) {
+                 var n = point_count;
+                 var i=0,j=0;
+
+                 for(; i < n; ++i) {
+                 if(point_status[i] == 1) {
+                 if(j < i) {
+                 curr_xy[j<<1] = curr_xy[i<<1];
+                 curr_xy[(j<<1)+1] = curr_xy[(i<<1)+1];
+                 }
+                 draw_circle(ctx, curr_xy[j<<1], curr_xy[(j<<1)+1]);
+                 ++j;
+                 }
+                 }
+                 point_count = j;
+                 }*/
 
                 function relMouseCoords(event) {
                     var totalOffsetX = 0, totalOffsetY = 0, canvasX = 0, canvasY = 0;
@@ -843,6 +940,10 @@
                     video.pause();
                     video.src = null;
                 });
+
+
+                //----------------------------------------------------------------------------------
+
 
             }
         },
