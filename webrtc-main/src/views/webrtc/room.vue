@@ -1,22 +1,15 @@
 <template>
     <div class="room">
         <div style="height: 0; overflow: hidden">
-        <img class="img" ref="targetImg">
+            <img class="img" ref="targetImg">
         </div>
 
         <video id="webcam" width="640" height="480" style="display:none;"></video>
         <div style=" width:640px;height:480px;">
-        <canvas id="canvas" width="640" height="480" style="position: absolute;" ></canvas>
-        <div id="model" style="position: absolute;width: 100%;height: 100%"></div>
-        <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
-        <div id="log" class="alert alert-info" style="z-index: -2;position: absolute"></div>
-        </div>
-        <div class="text-box">
-            <textarea :value="receiveText"></textarea>
-            <div class="send-box">
-                <input v-model="sendText"/>
-                <button @click="sendMessage">发送</button>
-            </div>
+            <canvas id="canvas" width="640" height="480" style="position: absolute;"></canvas>
+            <div id="model" style="position: absolute;width: 100%;height: 100%"></div>
+            <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
+            <div id="log" class="alert alert-info" style="z-index: -2;position: absolute"></div>
         </div>
     </div>
 </template>
@@ -37,9 +30,11 @@
                 peerList: {},
                 candidate: null,
                 // localStream: null,
-                receiveText: '',
-                sendText: '',
+                // receiveText: '',
+                // sendText: '',
                 userName: this.$route.params.account,
+                markerObject3D: null,
+                camera: null
             }
         },
         beforeDestroy() {
@@ -90,7 +85,7 @@
                     peer.ondatachannel = e => {
                         this.createDataChannel(e.channel);
                         peer.dataChannel = e.channel;
-                        console.log('adddatachannel')
+                        console.log('adddatachannel连接成功')
                     }
                 }
 
@@ -183,18 +178,11 @@
                     }
                 })
             },
-            sendMessage() {
-                if (this.sendText == '') {
-                    return
-                }
-                let text = this.sendText;
-                text = this.userName + ': ' + text;
-                console.log(text)
+            sendMessage(data) {
+                console.log('传输数据', data)
                 for (let k in this.peerList) {
-                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(text);
+                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(data);
                 }
-                this.receiveText += text + '\n';
-                this.sendText = '';
             },
             createDataChannel(dataChannel) {
                 dataChannel.onopen = (e) => {
@@ -204,11 +192,16 @@
                     console.log(dataChannel + 'close', e);
                 };
                 dataChannel.onmessage = (e) => {
-                    console.log(e.data, 'data');
-                    this.receiveText += e.data + '\n';
+                    let data = JSON.parse(e.data);
+                    let position = data.position;
+                    let rotation = data.rotation;
+                    console.log(data, 'data');
+                    this.markerObject3D.children[0].position.set(position.x, position.y, position.z);
+                    this.camera.rotation.set(rotation._x, rotation._y, rotation._z);
+                    console.log(this.camera.rotation, 'rotation');
                 };
             },
-            init(){
+            init() {
                 var canvas = document.getElementById('canvas');
                 var canvasWidth = canvas.width;
                 var canvasHeight = canvas.height;
@@ -219,6 +212,79 @@
                 var controls;
                 var startx, starty;
 
+                // 添加拖拽控件
+                let initDragControls = () => {
+                    // 添加平移控件
+                    var transformControls = new THREE.TransformControls(this.camera, renderer.domElement);
+                    this.markerObject3D.add(transformControls);
+
+                    // 过滤不是 Mesh 的物体,例如辅助网格对象
+                    var objects = [];
+                    for (let i = 0; i < this.markerObject3D.children.length; i++) {
+                        /*if (this.markerObject3D.children[i].isMesh) {
+                            console.log('afsaf', markerObject3D.children[i])
+                            objects.push(markerObject3D.children[i]);
+                        }*/
+                        objects.push(this.markerObject3D.children[i]);
+                    }
+
+                    // 初始化拖拽控件
+                    var dragControls = new THREE.DragControls(objects, this.camera, renderer.domElement);
+
+                    console.log(33333333)
+
+                    // 鼠标略过事件
+                    dragControls.addEventListener('hoveron', function (event) {
+                        // 让变换控件对象和选中的对象绑定
+                        transformControls.attach(event.object);
+                    });
+                    // 开始拖拽
+                    dragControls.addEventListener('dragstart', function (event) {
+                        controls.enabled = false;
+                    });
+                    // 拖拽中
+                    dragControls.addEventListener('drag', event => {
+                        this.sendCameraMsg()
+                    });
+                    // 拖拽结束
+                    dragControls.addEventListener('dragend', function (event) {
+                        controls.enabled = true;
+                    });
+
+
+                }
+
+                let ray = (event) => {
+
+                    // var Sx = event.clientX;//鼠标单击位置横坐标
+                    // var Sy = event.clientY;//鼠标单击位置纵坐标
+
+                    var Sx = event.clientX || event.changedTouches[0].clientX;
+                    var Sy = event.clientY || event.changedTouches[0].clientY;
+
+                    //屏幕坐标转标准设备坐标
+                    var x = (Sx / window.innerWidth) * 2 - 1;//标准设备横坐标
+                    var y = -(Sy / window.innerHeight) * 2 + 1;//标准设备纵坐标
+                    var standardVector = new THREE.Vector3(x, y, 0.5);//标准设备坐标
+
+                    //标准设备坐标转世界坐标
+                    var worldVector = standardVector.unproject(this.camera);
+
+                    //射线投射方向单位向量(worldVector坐标减相机位置坐标)
+                    var ray = worldVector.sub(this.camera.position).normalize();
+
+                    //创建射线投射器对象
+                    var raycaster = new THREE.Raycaster(this.camera.position, ray);
+
+                    // 获取raycaster射线和场景中所有部分相交的数组集合
+                    var intersects = raycaster.intersectObjects(this.markerObject3D);
+
+
+                    //控制点击不同部位，产生不同动画
+                    if (intersects.length > 0) {
+                        initDragControls();
+                    }
+                }
 
                 // init renderer
                 var renderer = new THREE.WebGLRenderer({
@@ -238,178 +304,125 @@
 
                 // init scene and camera
                 var scene = new THREE.Scene()
-                var camera = new THREE.PerspectiveCamera(40, canvasWidth / canvasHeight, 0.01, 1000);
-                camera.position.z = 2;
+                this.camera = new THREE.PerspectiveCamera(40, canvasWidth / canvasHeight, 0.01, 1000);
+                this.camera.position.z = 2;
 
                 //////////////////////////////////////////////////////////////////////////////////
                 //		create a markerObject3D
                 //////////////////////////////////////////////////////////////////////////////////
-                var markerObject3D = new THREE.Object3D()
-                scene.add(markerObject3D)
+                this.markerObject3D = new THREE.Object3D()
+                scene.add(this.markerObject3D)
 
                 //////////////////////////////////////////////////////////////////////////////////
                 //		add an object in the markerObject3D
                 //////////////////////////////////////////////////////////////////////////////////
 
                 // add some debug display
-                ;(function () {
-                    var geometry = new THREE.PlaneGeometry(1, 1, 10, 10)
-                    var material = new THREE.MeshBasicMaterial({
-                        wireframe: true
-                    })
-                    var mesh1 = new THREE.Mesh(geometry, material);
-                    mesh1.name = "mesh"
-                    markerObject3D.add(mesh1);
 
-                    var mesh2 = new THREE.AxisHelper
-                    mesh2.name = "axis"
-                    markerObject3D.add(mesh2);
 
-                })()
+                var geometry = new THREE.PlaneGeometry(1, 1, 10, 10)
+                var material = new THREE.MeshBasicMaterial({
+                    wireframe: true
+                })
+                var mesh1 = new THREE.Mesh(geometry, material);
+                mesh1.name = "mesh"
+                this.markerObject3D.add(mesh1);
+                initDragControls();
 
+                // var mesh2 = new THREE.AxisHelper
+                // mesh2.name = "axis"
+                // markerObject3D.add(mesh2);
                 // add a awesome logo to the scene
-                ;(function(){
-                    var material = new THREE.SpriteMaterial({
-                        map: THREE.ImageUtils.loadTexture( awesomeUrl),
-                    });
-                    //                var geometry = new THREE.BoxGeometry(1,1,1)
-                    var object3d = new THREE.Sprite(material );
-                    object3d.scale.set( 1, 1, 1 );
-                    object3d.name = 'png'
-                    markerObject3D.add(object3d)
-
-                })()
+                // /*;(function(){
+                //     var material = new THREE.SpriteMaterial({
+                //         map: THREE.ImageUtils.loadTexture( awesomeUrl),
+                //     });
+                //     //                var geometry = new THREE.BoxGeometry(1,1,1)
+                //     var object3d = new THREE.Sprite(material );
+                //     object3d.scale.set( 1, 1, 1 );
+                //     object3d.name = 'png'
+                //     markerObject3D.add(object3d)
+                //
+                // })()*/
 
                 // 加载人物模型
-                ;(function(){
-                    console.log(12123123133333333333333333333333333333)
-                    var loader = new THREE.FBXLoader();
-                    loader.load(modelUrl,function(fbx){
+                /*  var loader = new THREE.FBXLoader();
+                  loader.load(modelUrl, fbx => {
 
+                      fbx.name = "Spiderman";
+  //                fbx.rotation.y = -Math.PI/2;
+                      fbx.scale.set(0.01, 0.01, 0.01)
+                      fbx.position.set(0, 0, 0)
+                      this.markerObject3D.add(fbx)
 
-                        fbx.name = "Spiderman";
-//                fbx.rotation.y = -Math.PI/2;
-                        fbx.scale.set(0.01, 0.01, 0.01)
-                        fbx.position.set(0, 0, 0)
+  //                console.log(2131243123123,markerObject3D)
+                      initDragControls();
+                  });*/
 
-                        markerObject3D.add(fbx)
-//                console.log(2131243123123,markerObject3D)
-
-                        initDragControls();
-                    });
-
-
-                })()
-
-
-
-
-
-                function randerBase(data) {
-
-
-
-                    var mesh = null;
-                    var matArray = createMaterials(data);
-                    if (data.type == "SkinnedMesh") {
-                        mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
-                    } else { // Mesh
-                        mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
-                    }
-                    meshes.push(mesh);
-                    markerObject3D.add(mesh);
-
-                }
-
-
+                // function randerBase(data) {
+                //     var mesh = null;
+                //     var matArray = createMaterials(data);
+                //     if (data.type == "SkinnedMesh") {
+                //         mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                //     } else { // Mesh
+                //         mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                //     }
+                //     meshes.push(mesh);
+                //     this.markerObject3D.add(mesh);
+                // }
 
                 // 初始化触控点击监听函数
-                ;(function(){
 
 //            initDragControls();
-                    document. addEventListener('click', ray);// 监听窗口鼠标单击事件
+                document.addEventListener('click', ray);// 监听窗口鼠标单击事件
 
-                    document. addEventListener('touchend', ray);
+                document.addEventListener('touchend', ray);
 
-                    document.addEventListener("touchstart", function(e){
-                        startx = e.touches[0].pageX;
-                        starty = e.touches[0].pageY;
-                    }, false);
-                    //手指离开屏幕
-                    document.addEventListener("touchend", function(e) {
+                document.addEventListener("touchstart", function (e) {
+                    startx = e.touches[0].pageX;
+                    starty = e.touches[0].pageY;
+                }, false);
+                document.addEventListener('touchmove', e => {
+                    this.sendCameraMsg()
+                });
+                document.addEventListener('mousemove', e => {
+                    this.sendCameraMsg()
+                });
+                //手指离开屏幕
+                document.addEventListener("touchend", function (e) {
 //                var speedControl = document.getElementById("speed");
-                        var endx, endy;
-                        endx = e.changedTouches[0].pageX;
-                        endy = e.changedTouches[0].pageY;
-                        var direction = getDirection(startx, starty, endx, endy);
+                    var endx, endy;
+                    endx = e.changedTouches[0].pageX;
+                    endy = e.changedTouches[0].pageY;
+                    var direction = getDirection(startx, starty, endx, endy);
 
-                        switch (direction) {
-                            case 0:
-                                // alert("未滑动！");
-                                break;
-                            case 1:
-                                //alert("faster！");
+                    switch (direction) {
+                        case 0:
+                            // alert("未滑动！");
+                            break;
+                        case 1:
+                            //alert("faster！");
 
-                                return n = n * 2;
+                            return n = n * 2;
 
-                                break;
-                            case 2:
-                                //alert("slower！");
+                            break;
+                        case 2:
+                            //alert("slower！");
 
-                                return n=n * 0.5;
+                            return n = n * 0.5;
 
-                                break;
-                            case 3:
-                                //alert("向左！");
-                                break;
-                            case 4:
-                                //alert("向右！");
-                                break;
-                            default:
-                                return n=1;
-                        }
-
-                    }, false);
-
-                })()
-
-
-
-                function ray(event) {
-
-                    // var Sx = event.clientX;//鼠标单击位置横坐标
-                    // var Sy = event.clientY;//鼠标单击位置纵坐标
-
-                    var Sx = event.clientX || event.changedTouches[0].clientX;
-                    var Sy = event.clientY || event.changedTouches[0].clientY;
-
-                    //屏幕坐标转标准设备坐标
-                    var x = ( Sx / window.innerWidth ) * 2 - 1;//标准设备横坐标
-                    var y = -( Sy / window.innerHeight ) * 2 + 1;//标准设备纵坐标
-                    var standardVector  = new THREE.Vector3(x, y, 0.5);//标准设备坐标
-
-                    //标准设备坐标转世界坐标
-                    var worldVector = standardVector.unproject(camera);
-
-                    //射线投射方向单位向量(worldVector坐标减相机位置坐标)
-                    var ray = worldVector.sub(camera.position).normalize();
-
-                    //创建射线投射器对象
-                    var raycaster = new THREE.Raycaster(camera.position, ray);
-
-                    // 获取raycaster射线和场景中所有部分相交的数组集合
-                    var intersects = raycaster.intersectObjects(meshes);
-
-
-
-                    //控制点击不同部位，产生不同动画
-                    if (intersects.length > 0) {
-                        console.log(34555555555555555555555)
-                        initDragControls();
-                        console.log(1231312312312)
-
+                            break;
+                        case 3:
+                            //alert("向左！");
+                            break;
+                        case 4:
+                            //alert("向右！");
+                            break;
+                        default:
+                            return n = 1;
                     }
-                }
+
+                }, false);
 
                 //根据起点终点返回方向 1向上 2向下 3向左 4向右 0未滑动
                 function getDirection(startx, starty, endx, endy) {
@@ -442,55 +455,14 @@
 
 
                 // 初始化控件
-                ;(function(){
-                    if (!controls)
-                        controls = new THREE.OrbitControls(camera, renderer.domElement);
+                if (!controls)
+                    controls = new THREE.OrbitControls(this.camera, renderer.domElement);
 
-                    controls.target.copy({
-                        x : 0,
-                        y : 0,
-                        z : 0
-                    });
-                })();
-
-
-
-                // 添加拖拽控件
-                function initDragControls() {
-                    // 添加平移控件
-                    var transformControls = new THREE.TransformControls(camera, renderer.domElement);
-                    markerObject3D.add(transformControls);
-
-                    // 过滤不是 Mesh 的物体,例如辅助网格对象
-                    var objects = [];
-                    for (let i = 0; i < markerObject3D.children.length; i++) {
-                        /*if (markerObject3D.children[i].isMesh) {
-                            console.log('afsaf', markerObject3D.children[i])
-                            objects.push(markerObject3D.children[i]);
-                        }*/
-                        console.log('afsaf', markerObject3D.children[i])
-                        objects.push(markerObject3D.children[i]);
-                    }
-
-                    console.log(111111111111,objects)
-                    // 初始化拖拽控件
-                    var dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
-
-                    // 鼠标略过事件
-                    dragControls.addEventListener('hoveron', function (event) {
-                        // 让变换控件对象和选中的对象绑定
-                        transformControls.attach(event.object);
-                    });
-                    // 开始拖拽
-                    dragControls.addEventListener('dragstart', function (event) {
-                        controls.enabled = false;
-                    });
-                    // 拖拽结束
-                    dragControls.addEventListener('dragend', function (event) {
-                        controls.enabled = true;
-                    });
-                }
-
+                controls.target.copy({
+                    x: 0,
+                    y: 0,
+                    z: 0
+                });
 
 //        initDragControls()
 
@@ -499,16 +471,16 @@
                 //////////////////////////////////////////////////////////////////////////////////
 
                 // handle window resize
-                window.addEventListener('resize', function () {
+                window.addEventListener('resize', () => {
                     renderer.setSize(canvasWidth, canvasHeight)
-                    camera.aspect = canvasWidth / canvasHeight
-                    camera.updateProjectionMatrix()
+                    this.camera.aspect = canvasWidth / canvasHeight
+                    this.camera.updateProjectionMatrix()
                 }, false)
 
 
                 // render the scene
-                onRenderFcts.push(function () {
-                    renderer.render(scene, camera);
+                onRenderFcts.push(() => {
+                    renderer.render(scene, this.camera);
                 })
 
                 // run the rendering loop
@@ -538,10 +510,10 @@
                 //		Process video source to find markers
                 //////////////////////////////////////////////////////////////////////////////////
                 // set the markerObject3D as visible
-                markerObject3D.visible = false
+                this.markerObject3D.visible = false
                 // process the image source with the marker recognition
-                onRenderFcts.push(function () {
-                    markerObject3D.visible = false
+                onRenderFcts.push(() => {
+                    this.markerObject3D.visible = false
 
                     // see if this.markerId has been found
                     var shape_pts = tCorners(homo3x3.data, 520, 524);
@@ -558,7 +530,7 @@
                     shape_pts[3] = temp1
                     if (flag_result > 0) {
 
-                        jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
+                        jsArucoMarker.markerToObject3D(shape_pts, this.markerObject3D)
                     }
                     //输出模型位置坐标
 //            console.log(markerObject3D.position)
@@ -566,7 +538,7 @@
 
 //                jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
 
-                    markerObject3D.visible = true
+                    this.markerObject3D.visible = true
                 })
 
 
@@ -710,7 +682,7 @@
                         var start_time = new Date().getTime();
                         jsfeat.optical_flow_lk.track(prev_img_pyr, curr_img_pyr, prev_xy, curr_xy, point_count, options.win_size | 0, options.max_iterations | 0, point_status, options.epsilon, options.min_eigen);
                         var run_time = (new Date().getTime() - start_time);
-                        console.log('光流耗时：' + run_time + ' ms');
+                        // console.log('光流耗时：' + run_time + ' ms');
                         stat.stop("通过光流追踪已有特征点");
 
                         stat.start("计算单应性矩阵");
@@ -737,8 +709,7 @@
 
 
                                 render_pattern_shape(ctx, shape_pts);
-                            }
-                            else {
+                            } else {
                                 flag_result = 0
                             }
                             // console.log('point_count:' + point_count);
@@ -799,7 +770,7 @@
 
 
                     for (var i = 0; i < keyPoints.length; ++i) {
-                        if (keyPoints[i].x < canvasWidth & keyPoints[i].y < canvasHeight) {
+                        if (patternPoint && keyPoints[i].x < canvasWidth && keyPoints[i].y < canvasHeight) {
                             curr_xy[i << 1] = keyPoints[i].x;
                             curr_xy[(i << 1) + 1] = keyPoints[i].y;
                             pattern_xy[i << 1] = patternPoint[i].x;
@@ -945,6 +916,12 @@
                 //----------------------------------------------------------------------------------
 
 
+            },
+            sendCameraMsg() {
+                let data = {};
+                data.position = this.markerObject3D.children[0].position;
+                data.rotation = this.camera.rotation;
+                this.sendMessage(JSON.stringify(data));
             }
         },
         mounted() {
@@ -972,7 +949,7 @@
             });
             let targetImg = this.$refs.targetImg;
             targetImg.src = targetUrl;
-            targetImg.onload = ()=>{
+            targetImg.onload = () => {
                 this.init();
             }
 
@@ -989,6 +966,7 @@
         display: flex;
         justify-content: flex-start;
         flex-wrap: wrap;
+
         video {
             width: 400px;
             height: 300px;
@@ -999,15 +977,18 @@
     .text-box {
         margin-top: 10px;
         text-align: left;
+
         textarea {
             width: 400px;
             height: 300px;
             overflow-x: hidden;
             overflow-y: hidden;
         }
+
         .send-box {
             overflow: hidden;
             width: 400px;
+
             input {
                 box-sizing: border-box;
                 width: 300px;
@@ -1015,6 +996,7 @@
                 margin: 5px;
                 float: left;
             }
+
             button {
                 box-sizing: border-box;
                 width: 80px;
@@ -1024,7 +1006,7 @@
         }
     }
 
-    canvas{
+    canvas {
         position: absolute;
         left: 0;
         top: 0;
