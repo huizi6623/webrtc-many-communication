@@ -1,5 +1,5 @@
 <template>
-    <div class="room">
+    <div class="room" ref="room">
         <div style="height: 0; overflow: hidden">
             <img class="img" ref="targetImg">
         </div>
@@ -9,7 +9,7 @@
             <canvas id="canvas" width="640" height="480" style="position: absolute;"></canvas>
             <div id="model" style="position: absolute;width: 100%;height: 100%"></div>
             <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
-            <div id="log" class="alert alert-info" style="z-index: -2;position: absolute"></div>
+            <div id="log" class="alert alert-info" style="z-index: 2;position: absolute;top: 70%;left: 0;"></div>
         </div>
     </div>
 </template>
@@ -78,14 +78,14 @@
                 if (v.isOffer) {
                     peer.dataChannel = peer.createDataChannel("DataChannel");
                     this.createDataChannel(peer.dataChannel);
-                    console.log('createDataChannel')
+                    alert('createDataChannel')
                     console.log(this.peerList)
                 } else {
-                    console.log('ondatachannel')
+                    alert('ondatachannel')
                     peer.ondatachannel = e => {
                         this.createDataChannel(e.channel);
                         peer.dataChannel = e.channel;
-                        console.log('adddatachannel连接成功')
+                        alert('adddatachannel连接成功')
                     }
                 }
 
@@ -240,7 +240,7 @@
                     });
                     // 开始拖拽
                     dragControls.addEventListener('dragstart', function (event) {
-                        controls.enabled = false;
+                        // controls.enabled = false;
                     });
                     // 拖拽中
                     dragControls.addEventListener('drag', event => {
@@ -248,7 +248,7 @@
                     });
                     // 拖拽结束
                     dragControls.addEventListener('dragend', function (event) {
-                        controls.enabled = true;
+                        // controls.enabled = true;
                     });
 
 
@@ -374,22 +374,23 @@
                 // 初始化触控点击监听函数
 
 //            initDragControls();
-                document.addEventListener('click', ray);// 监听窗口鼠标单击事件
+                let room = this.$refs.room;
+                room.addEventListener('click', ray);// 监听窗口鼠标单击事件
 
-                document.addEventListener('touchend', ray);
+                room.addEventListener('touchend', ray);
 
-                document.addEventListener("touchstart", function (e) {
+                room.addEventListener("touchstart", function (e) {
                     startx = e.touches[0].pageX;
                     starty = e.touches[0].pageY;
                 }, false);
-                document.addEventListener('touchmove', e => {
+                room.addEventListener('touchmove', e => {
                     this.sendCameraMsg()
                 });
-                document.addEventListener('mousemove', e => {
+                room.addEventListener('mousemove', e => {
                     this.sendCameraMsg()
                 });
                 //手指离开屏幕
-                document.addEventListener("touchend", function (e) {
+                room.addEventListener("touchend", function (e) {
 //                var speedControl = document.getElementById("speed");
                     var endx, endy;
                     endx = e.changedTouches[0].pageX;
