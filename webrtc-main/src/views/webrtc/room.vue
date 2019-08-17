@@ -34,7 +34,8 @@
                 // sendText: '',
                 userName: this.$route.params.account,
                 markerObject3D: null,
-                camera: null
+                camera: null,
+                timer: null , //定时器
             }
         },
         beforeDestroy() {
@@ -42,11 +43,12 @@
                 this.peerList[k].close();
                 this.peerList[k] = null;
             }
+            clearInterval(this.timer);
         },
         methods: {
             getPeerConnection(v) {
-                console.log(v, 'v')
-                let videoBox = this.$refs['video-box'];
+                // console.log(v, 'v');
+                // let videoBox = this.$refs['video-box'];
                 let iceServer = {
                     "iceServers": [
                         {
@@ -78,20 +80,19 @@
                 if (v.isOffer) {
                     peer.dataChannel = peer.createDataChannel("DataChannel");
                     this.createDataChannel(peer.dataChannel);
-                    alert('createDataChannel')
-                    console.log(this.peerList)
+                    alert('创建DataChannel')
+                    // console.log(this.peerList)
                 } else {
-                    alert('ondatachannel')
+                    alert('监听datachannel')
                     peer.ondatachannel = e => {
                         this.createDataChannel(e.channel);
                         peer.dataChannel = e.channel;
-                        alert('adddatachannel连接成功')
+                        alert('datachannel连接成功')
                     }
                 }
 
                 peer.isOffer = v.isOffer;
                 this.peerList[v.account] = peer;
-                console.log(this.peerList, 'peerList')
             },
             createOffer(account, peer) {
                 //发送offer，发送本地session描述
@@ -99,7 +100,7 @@
                     offerToReceiveAudio: 1,
                     offerToReceiveVideo: 1
                 }).then((desc) => {
-                    console.log('send-offer', desc, account);
+                    // console.log('send-offer', desc, account);
                     peer.setLocalDescription(desc, () => {
                         socket.emit('offer', {
                             'sdp': peer.localDescription,
@@ -112,22 +113,39 @@
                 })
             },
             socketInit() {
+                socket.on('joined', (data, account) => {
+                    console.log('joined', data, account);
+                    if (data.length > 1) {
+                        data.forEach(v => {
+                            let obj = {};
+                            let arr = [v.account, this.$route.params.account];
+                            obj.account = arr.sort().join('-')
+                            obj.isOffer = arr[0] == this.$route.params.account ? true : false;
+                            if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
+                                // console.log('obj', obj);
+                                this.getPeerConnection(obj);
+                                if (this.peerList[obj.account].isOffer) {
+                                    this.createOffer(obj.account, this.peerList[obj.account])
+                                }
+                            }
+                        });
+                    }
+                });
                 socket.on('offer', v => {
                     if (v.account.indexOf(this.$route.params.account) == -1) {
                         return;
                     }
-                    console.log('take_offer', this.peerList[v.account], v);
+                    // console.log('take_offer', this.peerList[v.account], v);
                     if (!this.peerList[v.account]) {
                         let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false;
                         v.isOffer = isOffer;
-                        console.log('create')
+                        // console.log('create')
                         this.getPeerConnection(v)
                     }
                     if (!this.peerList[v.account].isOffer) {
                         this.peerList[v.account].setRemoteDescription(v.sdp, () => {
-                            console.log('setremote')
                             this.peerList[v.account].createAnswer().then((desc) => {
-                                console.log('send-answer', desc, v);
+                                // console.log('send-answer', desc, v);
                                 this.peerList[v.account].setLocalDescription(desc, () => {
                                     socket.emit('answer', {
                                         'sdp': this.peerList[v.account].localDescription,
@@ -147,11 +165,10 @@
                     if (v.account.indexOf(this.$route.params.account) == -1) {
                         return;
                     }
-                    console.log('take_answer', v.sdp, v);
+                    // console.log('take_answer', v.sdp, v);
                     if (!this.peerList[v.account]) {
                         let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false;
                         v.isOffer = isOffer;
-                        console.log('create')
                         this.getPeerConnection(v)
                     }
                     if (this.peerList[v.account].isOffer) {
@@ -176,29 +193,43 @@
                     if (dom) {
                         dom.remove();
                     }
+                });
+                socket.on('updateTime', data => {
+                    // 在当前peerConnection对象上增加一个time属性，表示当前链接通过服务器传输数据时延
+                    this.peerList[data.peerName].time = data.updateTime;
                 })
             },
             sendMessage(data) {
-                console.log('传输数据', data)
+                // 通过datachannel传输数据
+                // console.log('传输数据', data);
                 for (let k in this.peerList) {
                     this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(data);
                 }
             },
+            // 将当前时延信息发送给服务器
+            sendTimeToServer(data) {
+                socket.emit('time', {roomid: this.$route.params.roomid, account: this.$route.params.account, time: data});
+            },
+            // 将特征点数据发送给服务器
+            sendFeatureToServer(data) {
+                // 给服务器发送数据
+                socket.emit('feature', {roomid: this.$route.params.roomid, account: this.$route.params.account, feature: data});
+            },
             createDataChannel(dataChannel) {
                 dataChannel.onopen = (e) => {
-                    console.log(dataChannel + 'open', e);
+                    // console.log(dataChannel + 'open', e);
                 };
                 dataChannel.onclose = (e) => {
-                    console.log(dataChannel + 'close', e);
+                    // console.log(dataChannel + 'close', e);
                 };
                 dataChannel.onmessage = (e) => {
                     let data = JSON.parse(e.data);
                     let position = data.position;
                     let rotation = data.rotation;
-                    console.log(data, 'data');
+                    // console.log(data, 'data');
                     this.markerObject3D.children[0].position.set(position.x, position.y, position.z);
                     this.camera.rotation.set(rotation._x, rotation._y, rotation._z);
-                    console.log(this.camera.rotation, 'rotation');
+                    // console.log(this.camera.rotation, 'rotation');
                 };
             },
             init() {
@@ -231,7 +262,7 @@
                     // 初始化拖拽控件
                     var dragControls = new THREE.DragControls(objects, this.camera, renderer.domElement);
 
-                    console.log(33333333)
+                    // console.log(33333333)
 
                     // 鼠标略过事件
                     dragControls.addEventListener('hoveron', function (event) {
@@ -569,7 +600,7 @@
                         }
                     };
                     var onDimensionsReady = function (width, height) {
-                        console.log(width)
+                        // console.log(width)
                         demo_app(width, height);
                         compatibility.requestAnimationFrame(tick);
                     };
@@ -755,6 +786,7 @@
                     var imageData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
                     // var trainer = new FeatTrainer();
                     var grayImage = trainer.getGrayScaleMat(imageData);
+
                     var features = trainer.describeFeatures(grayImage);
 
 
@@ -929,31 +961,17 @@
             this.$nextTick(() => {
                 socket.emit('join', {roomid: this.$route.params.roomid, account: this.$route.params.account});
                 this.socketInit();
-                socket.on('joined', (data, account) => {
-                    console.log('joined', data, account);
-                    if (data.length > 1) {
-                        data.forEach(v => {
-                            let obj = {};
-                            let arr = [v.account, this.$route.params.account];
-                            obj.account = arr.sort().join('-')
-                            obj.isOffer = arr[0] == this.$route.params.account ? true : false;
-                            if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
-                                console.log('obj', obj);
-                                this.getPeerConnection(obj);
-                                if (this.peerList[obj.account].isOffer) {
-                                    this.createOffer(obj.account, this.peerList[obj.account])
-                                }
-                            }
-                        });
-                    }
-                });
+                let i = 0;
+                this.timer = setInterval(() => {
+                    i ++;
+                    this.sendTimeToServer(i);  //暂时随便写一个数据传递
+                }, 2000) // 1秒钟传递一次时延
             });
             let targetImg = this.$refs.targetImg;
             targetImg.src = targetUrl;
             targetImg.onload = () => {
                 this.init();
-            }
-
+            };
         }
     };
 </script>

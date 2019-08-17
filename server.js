@@ -8,6 +8,7 @@ const static = require('koa-static');
 const socket = require('koa-socket');
 const users = {}; // 保存用户
 const sockS = {}; // 保存客户端对应的socket
+
 const io = new socket({
     ioOptions: {
         pingTimeout: 10000,
@@ -41,6 +42,7 @@ app.use(async (ctx, next) => {
 });
 
 app._io.on( 'connection', sock => {
+    // console.log(sock.id, 'sockkkkk');
     sock.on('join', data=>{
         sock.join(data.roomid, () => {
             if (!users[data.roomid]) {
@@ -48,29 +50,58 @@ app._io.on( 'connection', sock => {
             }
             let obj = {
                 account: data.account,
-                id: sock.id
+                id: sock.id,
+                socket: sock,
+                time: 0
             };
             let arr = users[data.roomid].filter(v => v.account === data.account);
             if (!arr.length) {
                 users[data.roomid].push(obj);
             }
-            sockS[data.account] = sock;
-            app._io.in(data.roomid).emit('joined', users[data.roomid], data.account, sock.id); // 发给房间内所有人
+            // sockS[data.account] = sock;
+            let params = [];
+            users[data.roomid].forEach((item) => {
+                params.push({account: item.account});
+            });
+            app._io.in(data.roomid).emit('joined', params); // 发给房间内所有人
             // sock.to(data.roomid).emit('joined',data.account);
         });
     });
     sock.on('offer', data=>{
-        console.log('offer', data);
+        // console.log('offer', data);
         sock.to(data.roomid).emit('offer',data);
     });
     sock.on('answer', data=>{
-        console.log('answer', data);
+        // console.log('answer', data);
         sock.to(data.roomid).emit('answer',data);
     });
     sock.on('__ice_candidate', data=>{
         // console.log('__ice_candidate', data);
         sock.to(data.roomid).emit('__ice_candidate',data);
     });
+    sock.on('time', data => {
+        console.log(data, '时延');
+        if(users[data.roomid]){
+            let currentUser = users[data.roomid].filter(v => v.account === data.account)[0];
+            if(currentUser && currentUser.time !== data.time){
+                currentUser.time = data.time;
+                // console.log(currentUser);
+                let otherUsers = users[data.roomid].filter(v => v.account !== data.account);
+                if(otherUsers.length) {
+                    otherUsers.forEach((item) => {
+                        let peerName = [data.account, item.account].sort().join('-');
+                        let updateTime = data.time + item.time;
+                        let params = {
+                            peerName,
+                            updateTime
+                        };
+                        item.socket.emit('updateTime', params);
+                        sock.emit('updateTime', params);
+                    });
+                }
+            }
+        }
+    })
 });
 app._io.on('disconnect', (sock) => {
     for (let k in users) {
