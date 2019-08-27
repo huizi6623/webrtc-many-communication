@@ -18,6 +18,7 @@
     import socket from '../../utils/socket';
 
     import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target1.jpg' ;
+    import modelJDUrl from '../../../static/lib/examples/demo_yanhaoran/model/jd_model.JD'
     import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
     import modelUrl from '../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx' ;
 
@@ -233,6 +234,7 @@
                 };
             },
             init() {
+                let self = this;
                 var canvas = document.getElementById('canvas');
                 var canvasWidth = canvas.width;
                 var canvasHeight = canvas.height;
@@ -360,6 +362,68 @@
                 this.markerObject3D.add(mesh1);
                 initDragControls();
 
+                // 加载JD模型
+                ;(function(){
+                    var JDloader = new JDLoader_Ext.JDLoader();
+
+                    JDloader.load(modelJDUrl, function (data) {
+                        randerBase(data);
+
+                        initDragControls();
+                    });
+
+                })()
+
+
+
+
+
+                /*function randerBase(data) {
+                            var mesh = null;
+                            var matArray = createMaterials(data);
+                            if (data.type == "SkinnedMesh") {
+                                mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                            } else { // Mesh
+                                mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                            }
+                            meshes.push(mesh);
+                            markerObject3D.add(mesh);
+                }*/
+                function randerBase(data) {
+                    for (var i = 0; i < data.objects.length; ++i) {
+
+                        if (data.objects[i].type == "Mesh" || data.objects[i].type == "SkinnedMesh") {
+                            var mesh = null;
+                            var matArray = createMaterials(data);
+                            if (data.objects[i].type == "SkinnedMesh") {
+                                mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                            } else { // Mesh
+                                mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                            }
+                            mesh.scale.set(0.01,0.01,0.01)
+                            self.markerObject3D.add(mesh)
+                        }
+                        else if (data.objects[i].type == "Line") {
+                            var jd_color = data.objects[i].jd_object.color;
+                            var color1 = new THREE.Color( jd_color[0] / 255, jd_color[1] / 255, jd_color[2] / 255 );
+                            var material = new THREE.LineBasicMaterial({ color: color1 });
+                            var line = new THREE.Line(data.objects[i].geometry, material);
+                            self.markerObject3D.add(line)
+                        }
+
+                    }
+                }
+
+                function createMaterials(data) {
+                    var matArray = [];
+                    for (var j = 0; j < data.materials.length; ++j) {
+                        var mat = new THREE.MeshPhongMaterial({});
+                        mat.copy(data.materials[j]);
+                        // mat.transparent = true;
+                        matArray.push(mat);
+                    }
+                    return matArray;
+                }
                 // var mesh2 = new THREE.AxisHelper
                 // mesh2.name = "axis"
                 // markerObject3D.add(mesh2);

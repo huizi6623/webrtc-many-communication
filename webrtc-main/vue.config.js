@@ -49,6 +49,13 @@ module.exports = {
             .test(/\.fbx$/)
             .use('file-loader')
             .loader('file-loader')
+            .end();
+
+        config.module
+            .rule('jd')
+            .test(/\.JD$/)
+            .use('file-loader')
+            .loader('file-loader')
             .end()
     }
 };
