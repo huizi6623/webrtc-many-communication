@@ -1,6 +1,7 @@
 /**
  * Created by wyw on 2018/10/14.
  */
+
 const Koa = require('koa');
 const path = require('path');
 const koaSend = require('koa-send');
@@ -79,8 +80,31 @@ app._io.on( 'connection', sock => {
         // console.log('__ice_candidate', data);
         sock.to(data.roomid).emit('__ice_candidate',data);
     });
+    // function strlen(str){
+    //     var len = 0;
+    //     for (var i=0; i<str.length; i++) {
+            //取出单个字符
+            // var c = str.charCodeAt(i);
+          //  单字节加1 ，0~9，a~z
+            // if ((c >= 0x0001 && c <= 0x007e) || (0xff60<=c && c<=0xff9f)) {
+            //     len++;
+            // }else {
+            //     len+=2;
+            // }
+        // }
+        // return len;
+  //  }
+
     sock.on('time', data => {
-        console.log(data, '时延');
+
+
+
+       // size=strlen(data.img);
+       //  console.log(size);
+        var speed = 243/ ((new Date()-new Date(data.time))/1000) / 1024;
+
+        console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
+
         if(users[data.roomid]){
             let currentUser = users[data.roomid].filter(v => v.account === data.account)[0];
             if(currentUser && currentUser.time !== data.time){

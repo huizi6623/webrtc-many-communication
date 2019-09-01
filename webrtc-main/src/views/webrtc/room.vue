@@ -3,7 +3,7 @@
         <div style="height: 0; overflow: hidden">
             <img class="img" ref="targetImg">
         </div>
-
+        <img id="testBandwith" src="https://upload.wikimedia.org/wikipedia/commons/5/51/Google.png">
         <video id="webcam" width="640" height="480" style="display:none;"></video>
         <div style=" width:640px;height:480px;">
             <canvas id="canvas" width="640" height="480" style="position: absolute;"></canvas>
@@ -209,7 +209,7 @@
             },
             // 将当前时延信息发送给服务器
             sendTimeToServer(data) {
-                socket.emit('time', {roomid: this.$route.params.roomid, account: this.$route.params.account, time: data});
+                socket.emit('time', {roomid: this.$route.params.roomid, account: this.$route.params.account, img:data, time: new Date()});
             },
             // 将特征点数据发送给服务器
             sendFeatureToServer(data) {
@@ -1025,11 +1025,13 @@
             this.$nextTick(() => {
                 socket.emit('join', {roomid: this.$route.params.roomid, account: this.$route.params.account});
                 this.socketInit();
-                let i = 0;
-                this.timer = setInterval(() => {
-                    i ++;
-                    this.sendTimeToServer(i);  //暂时随便写一个数据传递
-                }, 2000) // 1秒钟传递一次时延
+
+                let imgInput = document.getElementById('testBandwith');
+
+                    this.timer = setInterval(() => {
+                        this.sendTimeToServer(imgInput.data);  //暂时随便写一个数据传递
+                    }, 2000) // 1秒钟传递一次时延
+
             });
             let targetImg = this.$refs.targetImg;
             targetImg.src = targetUrl;
