@@ -17,8 +17,7 @@ THREEx.JsArucoMarker = function(){
 	 */
 	this.markerToObject3D = function(marker_temp, object3d){
 
-        // ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
-
+        // console.log('aaaaaaaaaaaaaaaaaaaaaa',document.getElementById('canvas'))
         canvasElement_width = 640
         canvasElement_height = 480
         // canvasElement_width = 300
@@ -27,31 +26,20 @@ THREEx.JsArucoMarker = function(){
         console.log(marker_temp)
 		// convert corners coordinate - not sure why
 		var corners = []//marker_temp;
-		var sumx = 0
-		var sumy = 0
+
 		for (var i = 0; i < marker_temp.length; ++ i){
-        	sumx = sumx + marker_temp[i].x
-			sumy = sumy + marker_temp[i].y
+
 			corners.push({
-				// x : marker_temp[i].x - (canvasElement_width / 2),
-				// y : (canvasElement_height / 2) - marker_temp[i].y,
 
-                x : (marker_temp[i].x - (canvasElement_width / 2)),
-                y : (canvasElement_height / 2) - marker_temp[i].y ,
+                // x : (marker_temp[i].x - (canvasElement_width / 2)) ,
+                // y : (canvasElement_height / 2) - marker_temp[i].y
 
+                x : (marker_temp[i].x - (canvasElement_width / 2)) - canvasElement_width *0.05,
+                y : (canvasElement_height / 2) - marker_temp[i].y + canvasElement_height *0.05,
                 // x : (marker_temp[i].x - (canvasElement_width / 2))/3.35,
                 // y : (canvasElement_height / 2) - marker_temp[i].y/3.35 ,
 			})
 		}
-        console.log('pos1',sumx/4, sumy/4)
-		sumx = 0
-		sumy = 0
-        for (var i = 0; i < marker_temp.length; ++ i){
-            sumx = sumx + corners[i].x
-            sumy = sumy + corners[i].y
-        }
-        console.log('pos2',sumx/4, sumy/4)
-
 
 		// compute the pose from the canvas
 		var posit = new POS.Posit(this.modelSize, canvasElement_width);

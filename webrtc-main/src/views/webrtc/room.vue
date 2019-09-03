@@ -1,22 +1,15 @@
 <template>
-    <div class="room">
+    <div class="room" ref="room">
         <div style="height: 0; overflow: hidden">
-        <img class="img" ref="targetImg">
+            <img class="img" ref="targetImg">
         </div>
 
         <video id="webcam" width="640" height="480" style="display:none;"></video>
         <div style=" width:640px;height:480px;">
-        <canvas id="canvas" width="640" height="480" style="position: absolute;" ></canvas>
-        <div id="model" style="position: absolute;width: 100%;height: 100%"></div>
-        <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
-        <div id="log" class="alert alert-info" style="z-index: -2;position: absolute"></div>
-        </div>
-        <div class="text-box">
-            <textarea :value="receiveText"></textarea>
-            <div class="send-box">
-                <input v-model="sendText"/>
-                <button @click="sendMessage">发送</button>
-            </div>
+            <canvas id="canvas" width="640" height="480" style="position: absolute;"></canvas>
+            <div id="model" style="position: absolute;width: 100%;height: 100%"></div>
+            <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
+            <div id="log" class="alert alert-info" style="z-index: 2;position: absolute;top: 70%;left: 0;"></div>
         </div>
     </div>
 </template>
@@ -24,7 +17,8 @@
 <script>
     import socket from '../../utils/socket';
 
-    import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target.jpg' ;
+    import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target1.jpg' ;
+    import modelJDUrl from '../../../static/lib/examples/demo_yanhaoran/model/jd_model.JD'
     import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
     import modelUrl from '../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx' ;
 
@@ -37,9 +31,12 @@
                 peerList: {},
                 candidate: null,
                 // localStream: null,
-                receiveText: '',
-                sendText: '',
+                // receiveText: '',
+                // sendText: '',
                 userName: this.$route.params.account,
+                markerObject3D: null,
+                camera: null,
+                timer: null , //定时器
             }
         },
         beforeDestroy() {
@@ -47,11 +44,12 @@
                 this.peerList[k].close();
                 this.peerList[k] = null;
             }
+            clearInterval(this.timer);
         },
         methods: {
             getPeerConnection(v) {
-                console.log(v, 'v')
-                let videoBox = this.$refs['video-box'];
+                // console.log(v, 'v');
+                // let videoBox = this.$refs['video-box'];
                 let iceServer = {
                     "iceServers": [
                         {
@@ -83,20 +81,19 @@
                 if (v.isOffer) {
                     peer.dataChannel = peer.createDataChannel("DataChannel");
                     this.createDataChannel(peer.dataChannel);
-                    console.log('createDataChannel')
-                    console.log(this.peerList)
+                    alert('创建DataChannel')
+                    // console.log(this.peerList)
                 } else {
-                    console.log('ondatachannel')
+                    alert('监听datachannel')
                     peer.ondatachannel = e => {
                         this.createDataChannel(e.channel);
                         peer.dataChannel = e.channel;
-                        console.log('adddatachannel')
+                        alert('datachannel连接成功')
                     }
                 }
 
                 peer.isOffer = v.isOffer;
                 this.peerList[v.account] = peer;
-                console.log(this.peerList, 'peerList')
             },
             createOffer(account, peer) {
                 //发送offer，发送本地session描述
@@ -104,7 +101,7 @@
                     offerToReceiveAudio: 1,
                     offerToReceiveVideo: 1
                 }).then((desc) => {
-                    console.log('send-offer', desc, account);
+                    // console.log('send-offer', desc, account);
                     peer.setLocalDescription(desc, () => {
                         socket.emit('offer', {
                             'sdp': peer.localDescription,
@@ -117,22 +114,39 @@
                 })
             },
             socketInit() {
+                socket.on('joined', (data, account) => {
+                    console.log('joined', data, account);
+                    if (data.length > 1) {
+                        data.forEach(v => {
+                            let obj = {};
+                            let arr = [v.account, this.$route.params.account];
+                            obj.account = arr.sort().join('-')
+                            obj.isOffer = arr[0] == this.$route.params.account ? true : false;
+                            if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
+                                // console.log('obj', obj);
+                                this.getPeerConnection(obj);
+                                if (this.peerList[obj.account].isOffer) {
+                                    this.createOffer(obj.account, this.peerList[obj.account])
+                                }
+                            }
+                        });
+                    }
+                });
                 socket.on('offer', v => {
                     if (v.account.indexOf(this.$route.params.account) == -1) {
                         return;
                     }
-                    console.log('take_offer', this.peerList[v.account], v);
+                    // console.log('take_offer', this.peerList[v.account], v);
                     if (!this.peerList[v.account]) {
                         let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false;
                         v.isOffer = isOffer;
-                        console.log('create')
+                        // console.log('create')
                         this.getPeerConnection(v)
                     }
                     if (!this.peerList[v.account].isOffer) {
                         this.peerList[v.account].setRemoteDescription(v.sdp, () => {
-                            console.log('setremote')
                             this.peerList[v.account].createAnswer().then((desc) => {
-                                console.log('send-answer', desc, v);
+                                // console.log('send-answer', desc, v);
                                 this.peerList[v.account].setLocalDescription(desc, () => {
                                     socket.emit('answer', {
                                         'sdp': this.peerList[v.account].localDescription,
@@ -152,11 +166,10 @@
                     if (v.account.indexOf(this.$route.params.account) == -1) {
                         return;
                     }
-                    console.log('take_answer', v.sdp, v);
+                    // console.log('take_answer', v.sdp, v);
                     if (!this.peerList[v.account]) {
                         let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false;
                         v.isOffer = isOffer;
-                        console.log('create')
                         this.getPeerConnection(v)
                     }
                     if (this.peerList[v.account].isOffer) {
@@ -181,42 +194,131 @@
                     if (dom) {
                         dom.remove();
                     }
+                });
+                socket.on('updateTime', data => {
+                    // 在当前peerConnection对象上增加一个time属性，表示当前链接通过服务器传输数据时延
+                    this.peerList[data.peerName].time = data.updateTime;
                 })
             },
-            sendMessage() {
-                if (this.sendText == '') {
-                    return
-                }
-                let text = this.sendText;
-                text = this.userName + ': ' + text;
-                console.log(text)
+            sendMessage(data) {
+                // 通过datachannel传输数据
+                // console.log('传输数据', data);
                 for (let k in this.peerList) {
-                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(text);
+                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(data);
                 }
-                this.receiveText += text + '\n';
-                this.sendText = '';
+            },
+            // 将当前时延信息发送给服务器
+            sendTimeToServer(data) {
+                socket.emit('time', {roomid: this.$route.params.roomid, account: this.$route.params.account, time: data});
+            },
+            // 将特征点数据发送给服务器
+            sendFeatureToServer(data) {
+                // 给服务器发送数据
+                socket.emit('feature', {roomid: this.$route.params.roomid, account: this.$route.params.account, feature: data});
             },
             createDataChannel(dataChannel) {
                 dataChannel.onopen = (e) => {
-                    console.log(dataChannel + 'open', e);
+                    // console.log(dataChannel + 'open', e);
                 };
                 dataChannel.onclose = (e) => {
-                    console.log(dataChannel + 'close', e);
+                    // console.log(dataChannel + 'close', e);
                 };
                 dataChannel.onmessage = (e) => {
-                    console.log(e.data, 'data');
-                    this.receiveText += e.data + '\n';
+                    let data = JSON.parse(e.data);
+                    let position = data.position;
+                    let rotation = data.rotation;
+                    // console.log(data, 'data');
+                    this.markerObject3D.children[0].position.set(position.x, position.y, position.z);
+                    this.camera.rotation.set(rotation._x, rotation._y, rotation._z);
+                    // console.log(this.camera.rotation, 'rotation');
                 };
             },
-            init(){
+            init() {
+                let self = this;
                 var canvas = document.getElementById('canvas');
                 var canvasWidth = canvas.width;
                 var canvasHeight = canvas.height;
 
                 var flag_result = 0
 
+
                 var controls;
                 var startx, starty;
+
+                // 添加拖拽控件
+                let initDragControls = () => {
+                    // 添加平移控件
+                    var transformControls = new THREE.TransformControls(this.camera, renderer.domElement);
+                    this.markerObject3D.add(transformControls);
+
+                    // 过滤不是 Mesh 的物体,例如辅助网格对象
+                    var objects = [];
+                    for (let i = 0; i < this.markerObject3D.children.length; i++) {
+                        /*if (this.markerObject3D.children[i].isMesh) {
+                            console.log('afsaf', markerObject3D.children[i])
+                            objects.push(markerObject3D.children[i]);
+                        }*/
+                        objects.push(this.markerObject3D.children[i]);
+                    }
+
+                    // 初始化拖拽控件
+                    var dragControls = new THREE.DragControls(objects, this.camera, renderer.domElement);
+
+                    // console.log(33333333)
+
+                    // 鼠标略过事件
+                    dragControls.addEventListener('hoveron', function (event) {
+                        // 让变换控件对象和选中的对象绑定
+                        transformControls.attach(event.object);
+                    });
+                    // 开始拖拽
+                    dragControls.addEventListener('dragstart', function (event) {
+                        // controls.enabled = false;
+                    });
+                    // 拖拽中
+                    dragControls.addEventListener('drag', event => {
+                        this.sendCameraMsg()
+                    });
+                    // 拖拽结束
+                    dragControls.addEventListener('dragend', function (event) {
+                        // controls.enabled = true;
+                    });
+
+
+                }
+
+                let ray = (event) => {
+
+                    // var Sx = event.clientX;//鼠标单击位置横坐标
+                    // var Sy = event.clientY;//鼠标单击位置纵坐标
+
+                    var Sx = event.clientX || event.changedTouches[0].clientX;
+                    var Sy = event.clientY || event.changedTouches[0].clientY;
+
+                    //屏幕坐标转标准设备坐标
+                    var x = (Sx / window.innerWidth) * 2 - 1;//标准设备横坐标
+                    var y = -(Sy / window.innerHeight) * 2 + 1;//标准设备纵坐标
+                    var standardVector = new THREE.Vector3(x, y, 0.5);//标准设备坐标
+
+                    //标准设备坐标转世界坐标
+                    var worldVector = standardVector.unproject(this.camera);
+
+                    //射线投射方向单位向量(worldVector坐标减相机位置坐标)
+                    var ray = worldVector.sub(this.camera.position).normalize();
+
+                    //创建射线投射器对象
+                    var raycaster = new THREE.Raycaster(this.camera.position, ray);
+
+                    // 获取raycaster射线和场景中所有部分相交的数组集合
+                    var intersects = raycaster.intersectObjects(this.markerObject3D);
+
+
+                    //控制点击不同部位，产生不同动画
+                    if (intersects.length > 0) {
+                        initDragControls();
+                    }
+                }
+
                 // init renderer
                 var renderer = new THREE.WebGLRenderer({
                     antialias: true,
@@ -225,164 +327,198 @@
 
                 renderer.setSize(canvasWidth, canvasHeight);
 //            renderer.setSize( window.innerWidth, window.innerHeight )
+
+
                 document.getElementById('model').appendChild(renderer.domElement);
+
+
                 // array of functions for the rendering loop
                 var onRenderFcts = [];
 
                 // init scene and camera
                 var scene = new THREE.Scene()
-                var camera = new THREE.PerspectiveCamera(40, canvasWidth / canvasHeight, 0.01, 1000);
-                camera.position.z = 2;
+                this.camera = new THREE.PerspectiveCamera(40, canvasWidth / canvasHeight, 0.01, 1000);
+                this.camera.position.z = 2;
 
                 //////////////////////////////////////////////////////////////////////////////////
                 //		create a markerObject3D
                 //////////////////////////////////////////////////////////////////////////////////
-                var markerObject3D = new THREE.Object3D()
-                scene.add(markerObject3D)
+                this.markerObject3D = new THREE.Object3D()
+                scene.add(this.markerObject3D)
 
                 //////////////////////////////////////////////////////////////////////////////////
                 //		add an object in the markerObject3D
                 //////////////////////////////////////////////////////////////////////////////////
 
                 // add some debug display
-                ;(function () {
-                    var geometry = new THREE.PlaneGeometry(1, 1, 10, 10)
-                    var material = new THREE.MeshBasicMaterial({
-                        wireframe: true
-                    })
-                    var mesh1 = new THREE.Mesh(geometry, material);
-                    mesh1.name = "mesh"
-                    markerObject3D.add(mesh1);
 
-                    var mesh2 = new THREE.AxisHelper
-                    mesh2.name = "axis"
-                    markerObject3D.add(mesh2);
-                })()
 
-                // add a awesome logo to the scene
+                var geometry = new THREE.PlaneGeometry(1, 1, 10, 10)
+                var material = new THREE.MeshBasicMaterial({
+                    wireframe: true
+                })
+                var mesh1 = new THREE.Mesh(geometry, material);
+                mesh1.name = "mesh"
+                this.markerObject3D.add(mesh1);
+                initDragControls();
+
+                // 加载JD模型
                 ;(function(){
-                    var material = new THREE.SpriteMaterial({
-                        map: THREE.ImageUtils.loadTexture(awesomeUrl),
-                    });
-                    //                var geometry = new THREE.BoxGeometry(1,1,1)
-                    var object3d = new THREE.Sprite(material );
-                    object3d.scale.set( 1, 1, 1 );
-                    object3d.name = 'png'
-                    markerObject3D.add(object3d)
-                })()
+                    var JDloader = new JDLoader_Ext.JDLoader();
 
-                // 加载人物模型
-                ;(function(){
-                    console.log(12123123133333333333333333333333333333)
-                    var loader = new THREE.FBXLoader();
-                    loader.load('../../../static/lib/examples/demo_yanhaoran/model/Spiderman.fbx',function(fbx){
-                        fbx.name = "Spiderman";
-//                fbx.rotation.y = -Math.PI/2;
-                        fbx.scale.set(0.01, 0.01, 0.01)
-                        fbx.position.set(0, 0, 0)
-
-                        markerObject3D.add(fbx)
-//                console.log(2131243123123,markerObject3D)
+                    JDloader.load(modelJDUrl, function (data) {
+                        randerBase(data);
 
                         initDragControls();
                     });
+
                 })()
 
+
+
+
+
+                /*function randerBase(data) {
+                            var mesh = null;
+                            var matArray = createMaterials(data);
+                            if (data.type == "SkinnedMesh") {
+                                mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                            } else { // Mesh
+                                mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                            }
+                            meshes.push(mesh);
+                            markerObject3D.add(mesh);
+                }*/
                 function randerBase(data) {
-                    var mesh = null;
-                    var matArray = createMaterials(data);
-                    if (data.type == "SkinnedMesh") {
-                        mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
-                    } else { // Mesh
-                        mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
-                    }
-                    meshes.push(mesh);
-                    markerObject3D.add(mesh);
+                    for (var i = 0; i < data.objects.length; ++i) {
 
-                }
-
-                // 初始化触控点击监听函数
-                ;(function(){
-
-//            initDragControls();
-                    document. addEventListener('click', ray);// 监听窗口鼠标单击事件
-
-                    document. addEventListener('touchend', ray);
-
-                    document.addEventListener("touchstart", function(e){
-                        startx = e.touches[0].pageX;
-                        starty = e.touches[0].pageY;
-                    }, false);
-                    //手指离开屏幕
-                    document.addEventListener("touchend", function(e) {
-//                var speedControl = document.getElementById("speed");
-                        var endx, endy;
-                        endx = e.changedTouches[0].pageX;
-                        endy = e.changedTouches[0].pageY;
-                        var direction = getDirection(startx, starty, endx, endy);
-
-                        switch (direction) {
-                            case 0:
-                                // alert("未滑动！");
-                                break;
-                            case 1:
-                                //alert("faster！");
-
-                                return n = n * 2;
-
-                                break;
-                            case 2:
-                                //alert("slower！");
-
-                                return n=n * 0.5;
-
-                                break;
-                            case 3:
-                                //alert("向左！");
-                                break;
-                            case 4:
-                                //alert("向右！");
-                                break;
-                            default:
-                                return n=1;
+                        if (data.objects[i].type == "Mesh" || data.objects[i].type == "SkinnedMesh") {
+                            var mesh = null;
+                            var matArray = createMaterials(data);
+                            if (data.objects[i].type == "SkinnedMesh") {
+                                mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                            } else { // Mesh
+                                mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                            }
+                            mesh.scale.set(0.01,0.01,0.01)
+                            self.markerObject3D.add(mesh)
+                        }
+                        else if (data.objects[i].type == "Line") {
+                            var jd_color = data.objects[i].jd_object.color;
+                            var color1 = new THREE.Color( jd_color[0] / 255, jd_color[1] / 255, jd_color[2] / 255 );
+                            var material = new THREE.LineBasicMaterial({ color: color1 });
+                            var line = new THREE.Line(data.objects[i].geometry, material);
+                            self.markerObject3D.add(line)
                         }
 
-                    }, false);
-
-                })()
-
-                function ray(event) {
-                    // var Sx = event.clientX;//鼠标单击位置横坐标
-                    // var Sy = event.clientY;//鼠标单击位置纵坐标
-
-                    var Sx = event.clientX || event.changedTouches[0].clientX;
-                    var Sy = event.clientY || event.changedTouches[0].clientY;
-
-                    //屏幕坐标转标准设备坐标
-                    var x = ( Sx / window.innerWidth ) * 2 - 1;//标准设备横坐标
-                    var y = -( Sy / window.innerHeight ) * 2 + 1;//标准设备纵坐标
-                    var standardVector  = new THREE.Vector3(x, y, 0.5);//标准设备坐标
-
-                    //标准设备坐标转世界坐标
-                    var worldVector = standardVector.unproject(camera);
-
-                    //射线投射方向单位向量(worldVector坐标减相机位置坐标)
-                    var ray = worldVector.sub(camera.position).normalize();
-
-                    //创建射线投射器对象
-                    var raycaster = new THREE.Raycaster(camera.position, ray);
-
-                    // 获取raycaster射线和场景中所有部分相交的数组集合
-                    var intersects = raycaster.intersectObjects(meshes);
-
-                    //控制点击不同部位，产生不同动画
-                    if (intersects.length > 0) {
-                        console.log(34555555555555555555555)
-                        initDragControls();
-                        console.log(1231312312312)
-
                     }
                 }
+
+                function createMaterials(data) {
+                    var matArray = [];
+                    for (var j = 0; j < data.materials.length; ++j) {
+                        var mat = new THREE.MeshPhongMaterial({});
+                        mat.copy(data.materials[j]);
+                        // mat.transparent = true;
+                        matArray.push(mat);
+                    }
+                    return matArray;
+                }
+                // var mesh2 = new THREE.AxisHelper
+                // mesh2.name = "axis"
+                // markerObject3D.add(mesh2);
+                // add a awesome logo to the scene
+                // /*;(function(){
+                //     var material = new THREE.SpriteMaterial({
+                //         map: THREE.ImageUtils.loadTexture( awesomeUrl),
+                //     });
+                //     //                var geometry = new THREE.BoxGeometry(1,1,1)
+                //     var object3d = new THREE.Sprite(material );
+                //     object3d.scale.set( 1, 1, 1 );
+                //     object3d.name = 'png'
+                //     markerObject3D.add(object3d)
+                //
+                // })()*/
+
+                // 加载人物模型
+                /*  var loader = new THREE.FBXLoader();
+                  loader.load(modelUrl, fbx => {
+
+                      fbx.name = "Spiderman";
+  //                fbx.rotation.y = -Math.PI/2;
+                      fbx.scale.set(0.01, 0.01, 0.01)
+                      fbx.position.set(0, 0, 0)
+                      this.markerObject3D.add(fbx)
+
+  //                console.log(2131243123123,markerObject3D)
+                      initDragControls();
+                  });*/
+
+                // function randerBase(data) {
+                //     var mesh = null;
+                //     var matArray = createMaterials(data);
+                //     if (data.type == "SkinnedMesh") {
+                //         mesh = new THREE.SkinnedMesh(data.objects[i].geometry, matArray);
+                //     } else { // Mesh
+                //         mesh = new THREE.Mesh(data.objects[i].geometry, matArray);
+                //     }
+                //     meshes.push(mesh);
+                //     this.markerObject3D.add(mesh);
+                // }
+
+                // 初始化触控点击监听函数
+
+//            initDragControls();
+                let room = this.$refs.room;
+                room.addEventListener('click', ray);// 监听窗口鼠标单击事件
+
+                room.addEventListener('touchend', ray);
+
+                room.addEventListener("touchstart", function (e) {
+                    startx = e.touches[0].pageX;
+                    starty = e.touches[0].pageY;
+                }, false);
+                room.addEventListener('touchmove', e => {
+                    this.sendCameraMsg()
+                });
+                room.addEventListener('mousemove', e => {
+                    this.sendCameraMsg()
+                });
+                //手指离开屏幕
+                room.addEventListener("touchend", function (e) {
+//                var speedControl = document.getElementById("speed");
+                    var endx, endy;
+                    endx = e.changedTouches[0].pageX;
+                    endy = e.changedTouches[0].pageY;
+                    var direction = getDirection(startx, starty, endx, endy);
+
+                    switch (direction) {
+                        case 0:
+                            // alert("未滑动！");
+                            break;
+                        case 1:
+                            //alert("faster！");
+
+                            return n = n * 2;
+
+                            break;
+                        case 2:
+                            //alert("slower！");
+
+                            return n = n * 0.5;
+
+                            break;
+                        case 3:
+                            //alert("向左！");
+                            break;
+                        case 4:
+                            //alert("向右！");
+                            break;
+                        default:
+                            return n = 1;
+                    }
+
+                }, false);
 
                 //根据起点终点返回方向 1向上 2向下 3向左 4向右 0未滑动
                 function getDirection(startx, starty, endx, endy) {
@@ -413,65 +549,34 @@
                     return Math.atan2(angy, angx) * 180 / Math.PI;
                 }
 
+
                 // 初始化控件
-                ;(function(){
-                    if (!controls)
-                        controls = new THREE.OrbitControls(camera, renderer.domElement);
+                if (!controls)
+                    controls = new THREE.OrbitControls(this.camera, renderer.domElement);
 
-                    controls.target.copy({
-                        x : 0,
-                        y : 0,
-                        z : 0
-                    });
-                })();
-                // 添加拖拽控件
-                function initDragControls() {
-                    // 添加平移控件
-                    var transformControls = new THREE.TransformControls(camera, renderer.domElement);
-                    markerObject3D.add(transformControls);
+                controls.target.copy({
+                    x: 0,
+                    y: 0,
+                    z: 0
+                });
 
-                    // 过滤不是 Mesh 的物体,例如辅助网格对象
-                    var objects = [];
-                    for (let i = 0; i < markerObject3D.children.length; i++) {
-                        /*if (markerObject3D.children[i].isMesh) {
-                            console.log('afsaf', markerObject3D.children[i])
-                            objects.push(markerObject3D.children[i]);
-                        }*/
-                        console.log('afsaf', markerObject3D.children[i])
-                        objects.push(markerObject3D.children[i]);
-                    }
+//        initDragControls()
 
-                    console.log(111111111111,objects)
-                    // 初始化拖拽控件
-                    var dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
-
-                    // 鼠标略过事件
-                    dragControls.addEventListener('hoveron', function (event) {
-                        // 让变换控件对象和选中的对象绑定
-                        transformControls.attach(event.object);
-                    });
-                    // 开始拖拽
-                    dragControls.addEventListener('dragstart', function (event) {
-                        controls.enabled = false;
-                    });
-                    // 拖拽结束
-                    dragControls.addEventListener('dragend', function (event) {
-                        controls.enabled = true;
-                    });
-                }
                 //////////////////////////////////////////////////////////////////////////////////
                 //		render the whole thing on the page
                 //////////////////////////////////////////////////////////////////////////////////
 
                 // handle window resize
-                window.addEventListener('resize', function () {
+                window.addEventListener('resize', () => {
                     renderer.setSize(canvasWidth, canvasHeight)
-                    camera.aspect = canvasWidth / canvasHeight
-                    camera.updateProjectionMatrix()
+                    this.camera.aspect = canvasWidth / canvasHeight
+                    this.camera.updateProjectionMatrix()
                 }, false)
+
+
                 // render the scene
-                onRenderFcts.push(function () {
-                    renderer.render(scene, camera);
+                onRenderFcts.push(() => {
+                    renderer.render(scene, this.camera);
                 })
 
                 // run the rendering loop
@@ -488,9 +593,11 @@
 
                     previousTime = now
                 })
+
                 //////////////////////////////////////////////////////////////////////////////////
                 //		Do the Augmented Reality part
                 //////////////////////////////////////////////////////////////////////////////////
+
 
                 // init the marker recognition
                 var jsArucoMarker = new THREEx.JsArucoMarker()
@@ -499,10 +606,10 @@
                 //		Process video source to find markers
                 //////////////////////////////////////////////////////////////////////////////////
                 // set the markerObject3D as visible
-                markerObject3D.visible = false
+                this.markerObject3D.visible = false
                 // process the image source with the marker recognition
-                onRenderFcts.push(function () {
-                    markerObject3D.visible = false
+                onRenderFcts.push(() => {
+                    this.markerObject3D.visible = false
 
                     // see if this.markerId has been found
                     var shape_pts = tCorners(homo3x3.data, 520, 524);
@@ -518,11 +625,21 @@
                     shape_pts[2] = temp2
                     shape_pts[3] = temp1
                     if (flag_result > 0) {
-                        jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
-                    }
 
-                    markerObject3D.visible = true
+                        jsArucoMarker.markerToObject3D(shape_pts, this.markerObject3D)
+                    }
+                    //输出模型位置坐标
+//            console.log(markerObject3D.position)
+
+
+//                jsArucoMarker.markerToObject3D(shape_pts, markerObject3D)
+
+                    this.markerObject3D.visible = true
                 })
+
+
+//---------------------------------------------------------------------------
+
 
                 var WIDTH = 640;
                 var HEIGHT = 480;
@@ -547,7 +664,7 @@
                         }
                     };
                     var onDimensionsReady = function (width, height) {
-                        console.log(width)
+                        // console.log(width)
                         demo_app(width, height);
                         compatibility.requestAnimationFrame(tick);
                     };
@@ -584,7 +701,7 @@
                 var curr_img_pyr, prev_img_pyr, point_count, point_status, prev_xy, curr_xy;
 
                 var trainer = new FeatTrainer();
-                var targetImg = document.getElementById("targetImg");
+                var targetImg = this.$refs.targetImg
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
                 var pattern = trainer.trainPattern(grayTarget);
                 var mm_kernel = new jsfeat.motion_model.homography2d();
@@ -601,6 +718,8 @@
                 }
 
                 function demo_app(videoWidth, videoHeight) {
+//                canvasWidth  = canvas.width;
+//                canvasHeight = canvas.height;
                     ctx = canvas.getContext('2d');
 
                     ctx.fillStyle = "rgb(0,255,0)";
@@ -631,6 +750,7 @@
                     stat.add("刷新特征点");
                 }
 
+
                 function tick() {
                     compatibility.requestAnimationFrame(tick);
                     stat.new_frame();
@@ -658,7 +778,7 @@
                         var start_time = new Date().getTime();
                         jsfeat.optical_flow_lk.track(prev_img_pyr, curr_img_pyr, prev_xy, curr_xy, point_count, options.win_size | 0, options.max_iterations | 0, point_status, options.epsilon, options.min_eigen);
                         var run_time = (new Date().getTime() - start_time);
-                        console.log('光流耗时：' + run_time + ' ms');
+                        // console.log('光流耗时：' + run_time + ' ms');
                         stat.stop("通过光流追踪已有特征点");
 
                         stat.start("计算单应性矩阵");
@@ -667,6 +787,8 @@
                             // console.log(curr_xy);
                             // mm_kernel.run(format_xy(pattern_xy, point_count), format_xy(curr_xy, point_count), homo3x3, point_count);
                             var result = calculate_transform(format_xy(pattern_xy, point_count), format_xy(curr_xy, point_count), point_count);
+                            // filterPoint();
+                            // console.log('good_match:' + result.goodMatch);
                             if (result.goodMatch > 6) {
                                 flag_result = 1
                                 var shape_pts = tCorners(homo3x3.data, 520, 524);
@@ -680,15 +802,22 @@
                                 shape_pts[1] = temp3
                                 shape_pts[2] = temp2
                                 shape_pts[3] = temp1
+
+
                                 render_pattern_shape(ctx, shape_pts);
-                            }
-                            else {
+                            } else {
                                 flag_result = 0
                             }
+                            // console.log('point_count:' + point_count);
+                            // console.log('pattern_count: ' + format_xy(pattern_xy, point_count).length);
+                            // console.log('curr_count: ' + format_xy(curr_xy, point_count).length);
+
                         }
 
                         stat.stop("计算单应性矩阵");
                         // prune_oflow_points(ctx);
+
+
                         if (frameId % 60 === 0 || point_count <= 4) {
                             stat.start("刷新特征点");
                             var start_time = new Date().getTime();
@@ -716,10 +845,14 @@
                 }
 
                 function on_canvas_click(e) {
+
+
                     var imageData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
                     // var trainer = new FeatTrainer();
                     var grayImage = trainer.getGrayScaleMat(imageData);
+
                     var features = trainer.describeFeatures(grayImage);
+
 
                     var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
                     var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);
@@ -732,8 +865,9 @@
                         keyPoints = features.keyPoints;
                     }
 
+
                     for (var i = 0; i < keyPoints.length; ++i) {
-                        if (keyPoints[i].x < canvasWidth & keyPoints[i].y < canvasHeight) {
+                        if (patternPoint && keyPoints[i].x < canvasWidth && keyPoints[i].y < canvasHeight) {
                             curr_xy[i << 1] = keyPoints[i].x;
                             curr_xy[(i << 1) + 1] = keyPoints[i].y;
                             pattern_xy[i << 1] = patternPoint[i].x;
@@ -741,6 +875,9 @@
                         }
                     }
                     point_count = keyPoints.length;
+                    // console.log(point_count);
+                    // console.log(format_xy(pattern_xy, point_count));
+
                 }
 
                 canvas.addEventListener('click', on_canvas_click, false);
@@ -793,6 +930,13 @@
 
                 }
 
+                /*  function draw_circle(ctx, x, y) {
+                 ctx.beginPath();
+                 ctx.arc(x, y, 2, 0, Math.PI*2, true);
+                 ctx.closePath();
+                 ctx.fill();
+                 }*/
+
                 function tCorners(M, w, h) {
                     var pt = [{'x': 0, 'y': 0}, {'x': w, 'y': 0}, {'x': w, 'y': h}, {'x': 0, 'y': h}];
                     var z = 0.0, i = 0, px = 0.0, py = 0.0;
@@ -809,6 +953,10 @@
                 }
 
                 function render_pattern_shape(ctx, shape_pts) {
+                    // get the projected pattern corners
+                    // target图像长宽
+
+
                     ctx.strokeStyle = "rgb(0,255,0)";
                     ctx.beginPath();
 
@@ -821,6 +969,23 @@
                     ctx.lineWidth = 4;
                     ctx.stroke();
                 }
+
+                /*function prune_oflow_points(ctx) {
+                 var n = point_count;
+                 var i=0,j=0;
+
+                 for(; i < n; ++i) {
+                 if(point_status[i] == 1) {
+                 if(j < i) {
+                 curr_xy[j<<1] = curr_xy[i<<1];
+                 curr_xy[(j<<1)+1] = curr_xy[(i<<1)+1];
+                 }
+                 draw_circle(ctx, curr_xy[j<<1], curr_xy[(j<<1)+1]);
+                 ++j;
+                 }
+                 }
+                 point_count = j;
+                 }*/
 
                 function relMouseCoords(event) {
                     var totalOffsetX = 0, totalOffsetY = 0, canvasX = 0, canvasY = 0;
@@ -844,37 +1009,33 @@
                     video.src = null;
                 });
 
+
+                //----------------------------------------------------------------------------------
+
+
+            },
+            sendCameraMsg() {
+                let data = {};
+                data.position = this.markerObject3D.children[0].position;
+                data.rotation = this.camera.rotation;
+                this.sendMessage(JSON.stringify(data));
             }
         },
         mounted() {
             this.$nextTick(() => {
                 socket.emit('join', {roomid: this.$route.params.roomid, account: this.$route.params.account});
                 this.socketInit();
-                socket.on('joined', (data, account) => {
-                    console.log('joined', data, account);
-                    if (data.length > 1) {
-                        data.forEach(v => {
-                            let obj = {};
-                            let arr = [v.account, this.$route.params.account];
-                            obj.account = arr.sort().join('-')
-                            obj.isOffer = arr[0] == this.$route.params.account ? true : false;
-                            if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
-                                console.log('obj', obj);
-                                this.getPeerConnection(obj);
-                                if (this.peerList[obj.account].isOffer) {
-                                    this.createOffer(obj.account, this.peerList[obj.account])
-                                }
-                            }
-                        });
-                    }
-                });
+                let i = 0;
+                this.timer = setInterval(() => {
+                    i ++;
+                    this.sendTimeToServer(i);  //暂时随便写一个数据传递
+                }, 2000) // 1秒钟传递一次时延
             });
             let targetImg = this.$refs.targetImg;
             targetImg.src = targetUrl;
-            targetImg.onload = ()=>{
+            targetImg.onload = () => {
                 this.init();
-            }
-
+            };
         }
     };
 </script>
@@ -888,6 +1049,7 @@
         display: flex;
         justify-content: flex-start;
         flex-wrap: wrap;
+
         video {
             width: 400px;
             height: 300px;
@@ -898,15 +1060,18 @@
     .text-box {
         margin-top: 10px;
         text-align: left;
+
         textarea {
             width: 400px;
             height: 300px;
             overflow-x: hidden;
             overflow-y: hidden;
         }
+
         .send-box {
             overflow: hidden;
             width: 400px;
+
             input {
                 box-sizing: border-box;
                 width: 300px;
@@ -914,6 +1079,7 @@
                 margin: 5px;
                 float: left;
             }
+
             button {
                 box-sizing: border-box;
                 width: 80px;
@@ -923,7 +1089,7 @@
         }
     }
 
-    canvas{
+    canvas {
         position: absolute;
         left: 0;
         top: 0;
