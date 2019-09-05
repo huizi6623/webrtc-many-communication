@@ -745,7 +745,7 @@
                     gui.add(options, 'win_size', 7, 30).step(1);
                     gui.add(options, 'max_iterations', 3, 30).step(1);
                     gui.add(options, 'epsilon', 0.001, 0.1).step(0.0025);
-                    gui.add(options, 'min_eigen', 0.001, 0.01).step(0.0025);
+                    gui.add(options, 'min_eigen', 0.0001, 0.01).step(0.0025);
 
                     stat.add("灰度化");
                     stat.add("构建图像金字塔");
