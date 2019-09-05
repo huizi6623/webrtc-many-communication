@@ -94,7 +94,10 @@ app._io.on( 'connection', sock => {
         // }
         // return len;
   //  }
+    sock.on('speed', data => {
 
+        console.log('设备处理速度',data,'ops/sec');
+    })
     sock.on('time', data => {
 
 

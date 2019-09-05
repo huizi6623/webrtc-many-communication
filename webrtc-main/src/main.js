@@ -3,10 +3,33 @@ import App from './App.vue';
 import router from './router/router';
 import store from './store/store';
 import socket from './utils/socket';
-import bus from './utils/eventBus';
 import ElementUI from 'element-ui';
+import BenchMark from 'benchmark';
 import 'element-ui/lib/theme-chalk/index.css';
 Vue.use(ElementUI);
+
+let suite = new BenchMark.Suite;
+console.log(suite, 'ssssss')
+function test1(){
+    let num = 1, i =1;
+
+    for(i =1; i <= 100; i++){
+        num=num*i;
+    }
+}
+
+// 添加测试
+suite.add('Device#test', function() {
+    test1();
+})
+.on('cycle', function(event) {
+    let str = event.target;
+    str = String(str);
+    console.log(str);
+    //console.log(event.target.hz);
+    socket.emit('speed', event.target.hz)
+})
+.run({ 'async': true });
 
 socket.on('connect', ()=>{
     console.log('连接成功');
