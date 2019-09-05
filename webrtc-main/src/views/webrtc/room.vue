@@ -821,8 +821,7 @@
                         // prune_oflow_points(ctx);
 
                         pointCountArr.push(result.goodMatch);
-                        console.log(frameId, 'frameeeee')
-                        if (frameId % 100 === 0) {
+                        if (frameId % 60 === 0) {
                             stat.start("刷新特征点");
                             var start_time = new Date().getTime();
                             on_canvas_click();
@@ -833,7 +832,7 @@
                             pointCountArr = [];
                         }
 
-                        frameId = (frameId + 1) % 100;
+                        frameId = (frameId + 1) % 60;
                         $('#log').html(stat.log() + '<br/>强制刷新跟踪点： ' + point_count);
                     }
                 }
