@@ -703,11 +703,15 @@
                 var trainer = new FeatTrainer();
                 var targetImg = this.$refs.targetImg
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
+
+                // 把特征点发送给后台
+                this.sendFeatureToServer(grayTarget);
                 var pattern = trainer.trainPattern(grayTarget);
                 var mm_kernel = new jsfeat.motion_model.homography2d();
                 var frameId = 0
                 var homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32_t | jsfeat.C1_t);
                 var match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
+                let pointCountArr = [];
                 // var mm_kernel = new jsfeat.motion_model.affine2d();
 
                 var demo_opt = function () {
@@ -749,7 +753,6 @@
                     stat.add("计算单应性矩阵");
                     stat.add("刷新特征点");
                 }
-
 
                 function tick() {
                     compatibility.requestAnimationFrame(tick);
@@ -817,14 +820,16 @@
                         stat.stop("计算单应性矩阵");
                         // prune_oflow_points(ctx);
 
-
-                        if (frameId % 60 === 0 || point_count <= 4) {
+                        pointCountArr.push(result.goodMatch);
+                        if (frameId % 60 === 0) {
                             stat.start("刷新特征点");
                             var start_time = new Date().getTime();
                             on_canvas_click();
                             var run_time = (new Date().getTime() - start_time);
                             console.log('目标检测耗时：' + run_time + ' ms');
                             stat.stop("刷新特征点");
+                            console.log(pointCountArr);
+                            pointCountArr = [];
                         }
 
                         frameId = (frameId + 1) % 60;
@@ -956,7 +961,6 @@
                     // get the projected pattern corners
                     // target图像长宽
 
-
                     ctx.strokeStyle = "rgb(0,255,0)";
                     ctx.beginPath();
 
@@ -1008,10 +1012,6 @@
                     video.pause();
                     video.src = null;
                 });
-
-
-                //----------------------------------------------------------------------------------
-
 
             },
             sendCameraMsg() {

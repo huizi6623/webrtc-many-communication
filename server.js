@@ -128,7 +128,10 @@ app._io.on( 'connection', sock => {
                 }
             }
         }
-    })
+    });
+    sock.on('feature', data => {
+        console.log(data);
+    });
 });
 app._io.on('disconnect', (sock) => {
     for (let k in users) {
