@@ -9,7 +9,7 @@ import 'element-ui/lib/theme-chalk/index.css';
 Vue.use(ElementUI);
 
 let suite = new BenchMark.Suite;
-console.log(suite, 'ssssss')
+
 function test1(){
     let num = 1, i =1;
 
@@ -23,10 +23,6 @@ suite.add('Device#test', function() {
     test1();
 })
 .on('cycle', function(event) {
-    let str = event.target;
-    str = String(str);
-    console.log(str);
-    //console.log(event.target.hz);
     socket.emit('speed', event.target.hz)
 })
 .run({ 'async': true });

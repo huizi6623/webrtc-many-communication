@@ -3,7 +3,6 @@
         <div style="height: 0; overflow: hidden">
             <img class="img" ref="targetImg">
         </div>
-        <img id="testBandwith" src="https://upload.wikimedia.org/wikipedia/commons/5/51/Google.png">
         <video id="webcam" width="640" height="480" style="display:none;"></video>
         <div style=" width:640px;height:480px;">
             <canvas id="canvas" width="640" height="480" style="position: absolute;"></canvas>
@@ -1026,12 +1025,9 @@
                 socket.emit('join', {roomid: this.$route.params.roomid, account: this.$route.params.account});
                 this.socketInit();
 
-                let imgInput = document.getElementById('testBandwith');
-
-                    this.timer = setInterval(() => {
-                        this.sendTimeToServer(imgInput.data);  //暂时随便写一个数据传递
-                    }, 2000) // 1秒钟传递一次时延
-
+                this.timer = setInterval(() => {
+                    this.sendTimeToServer('test time');  //暂时随便写一个数据传递
+                }, 2000) // 1秒钟传递一次时延
             });
             let targetImg = this.$refs.targetImg;
             targetImg.src = targetUrl;
