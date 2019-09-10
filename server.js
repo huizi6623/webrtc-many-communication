@@ -2,13 +2,13 @@
  * Created by wyw on 2018/10/14.
  */
 
-const Koa = require('koa');
+const Koa = require('koa'); // 封装了nodeJs的http模块，由express原班人马打造
 const path = require('path');
 const koaSend = require('koa-send');
-const static = require('koa-static');
+const static = require('koa-static');  // 处理静态资源
 const socket = require('koa-socket');
+const child_process = require('child_process');
 const users = {}; // 保存用户
-const sockS = {}; // 保存客户端对应的socket
 
 const io = new socket({
     ioOptions: {
@@ -80,30 +80,11 @@ app._io.on( 'connection', sock => {
         // console.log('__ice_candidate', data);
         sock.to(data.roomid).emit('__ice_candidate',data);
     });
-    // function strlen(str){
-    //     var len = 0;
-    //     for (var i=0; i<str.length; i++) {
-            //取出单个字符
-            // var c = str.charCodeAt(i);
-          //  单字节加1 ，0~9，a~z
-            // if ((c >= 0x0001 && c <= 0x007e) || (0xff60<=c && c<=0xff9f)) {
-            //     len++;
-            // }else {
-            //     len+=2;
-            // }
-        // }
-        // return len;
-  //  }
     sock.on('speed', data => {
-
         console.log('设备处理速度',data,'ops/sec');
-    })
+    });
     sock.on('time', data => {
 
-
-
-       // size=strlen(data.img);
-       //  console.log(size);
         var speed = 243/ ((new Date()-new Date(data.time))/1000) / 1024;
 
         console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
@@ -130,7 +111,17 @@ app._io.on( 'connection', sock => {
         }
     });
     sock.on('feature', data => {
-        console.log(data);
+        let workerProcess = child_process.spawn('python', ['feature.py', data]);
+
+        workerProcess.stdout.on('data', function (data) {
+            console.log('stdout: ' + data);
+        });
+
+        workerProcess.stderr.on('data', function (data) {
+            console.log('stderr: ' + data);
+        });
+
+        // console.log(data);
     });
 });
 app._io.on('disconnect', (sock) => {

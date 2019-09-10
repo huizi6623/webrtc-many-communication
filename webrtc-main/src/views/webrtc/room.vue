@@ -703,8 +703,6 @@
                 var targetImg = this.$refs.targetImg
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
 
-                // 把特征点发送给后台
-                this.sendFeatureToServer(grayTarget);
                 var pattern = trainer.trainPattern(grayTarget);
                 var mm_kernel = new jsfeat.motion_model.homography2d();
                 var frameId = 0
@@ -1033,6 +1031,15 @@
             targetImg.src = targetUrl;
             targetImg.onload = () => {
                 this.init();
+
+                // 图片转成base64码
+                let c = document.createElement('canvas');
+                let ctx = c.getContext('2d');
+                c.height = targetImg.height;
+                c.width = targetImg.width;
+                ctx.drawImage(targetImg, 0, 0);
+                let dataUrl = c.toDataURL('image/png');
+                this.sendFeatureToServer(dataUrl);
             };
         }
     };
