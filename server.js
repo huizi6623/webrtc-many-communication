@@ -2,6 +2,7 @@
  * Created by wyw on 2018/10/14.
  */
 
+const fs = require('fs');
 const Koa = require('koa'); // 封装了nodeJs的http模块，由express原班人马打造
 const path = require('path');
 const koaSend = require('koa-send');
@@ -87,7 +88,7 @@ app._io.on( 'connection', sock => {
 
         var speed = 243/ ((new Date()-new Date(data.time))/1000) / 1024;
 
-        console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
+        // console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
 
         if(users[data.roomid]){
             let currentUser = users[data.roomid].filter(v => v.account === data.account)[0];
@@ -111,17 +112,34 @@ app._io.on( 'connection', sock => {
         }
     });
     sock.on('feature', data => {
-        let workerProcess = child_process.spawn('python', ['feature.py', data]);
-
-        workerProcess.stdout.on('data', function (data) {
-            console.log('stdout: ' + data);
+        var imgData = data.feature;
+        //过滤data:URL
+        var base64Data = imgData.replace(/^data:image\/\w+;base64,/, "");
+        var dataBuffer = new Buffer.from(base64Data, 'base64');
+        let imageUrl = './images/' + new Date().getTime() + '.png';
+        fs.writeFile(imageUrl, dataBuffer, function(err) {
+            if(err){
+                console.log(err);
+            }else{
+                console.log("保存成功！");
+                workerPython();
+            }
         });
 
-        workerProcess.stderr.on('data', function (data) {
-            console.log('stderr: ' + data);
-        });
+        function workerPython() {
+            let workerProcess = child_process.spawn('python', ['feature.py', imageUrl]);
 
-        // console.log(data);
+            workerProcess.stdout.on('data', function (data) {
+                sock.emit('openCvFeature', data);
+                console.log('stdout: ' + data);
+            });
+
+            workerProcess.stderr.on('data', function (data) {
+                console.log('stderr: ' + data);
+            });
+
+            // console.log(data);
+        }
     });
 });
 app._io.on('disconnect', (sock) => {

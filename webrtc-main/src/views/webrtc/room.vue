@@ -197,6 +197,9 @@
                 socket.on('updateTime', data => {
                     // 在当前peerConnection对象上增加一个time属性，表示当前链接通过服务器传输数据时延
                     this.peerList[data.peerName].time = data.updateTime;
+                });
+                socket.on('openCvFeature', data => {
+                    console.log(data, 'ddddddddd')
                 })
             },
             sendMessage(data) {
@@ -704,8 +707,11 @@
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
 
                 var pattern = trainer.trainPattern(grayTarget);
+
+                // console.log(pattern, 'patten');
+
                 var mm_kernel = new jsfeat.motion_model.homography2d();
-                var frameId = 0
+                var frameId = 0;
                 var homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32_t | jsfeat.C1_t);
                 var match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
                 let pointCountArr = [];
@@ -847,14 +853,15 @@
                 }
 
                 function on_canvas_click(e) {
-
-
                     var imageData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+                    let base64Img = canvas.toDataURL('image/png');
+                    self.sendFeatureToServer(base64Img);
                     // var trainer = new FeatTrainer();
                     var grayImage = trainer.getGrayScaleMat(imageData);
 
                     var features = trainer.describeFeatures(grayImage);
 
+                    console.log(features, 'feaaaaaa');
 
                     var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
                     var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);
@@ -866,7 +873,6 @@
                     } else {
                         keyPoints = features.keyPoints;
                     }
-
 
                     for (var i = 0; i < keyPoints.length; ++i) {
                         if (patternPoint && keyPoints[i].x < canvasWidth && keyPoints[i].y < canvasHeight) {
@@ -1031,15 +1037,6 @@
             targetImg.src = targetUrl;
             targetImg.onload = () => {
                 this.init();
-
-                // 图片转成base64码
-                let c = document.createElement('canvas');
-                let ctx = c.getContext('2d');
-                c.height = targetImg.height;
-                c.width = targetImg.width;
-                ctx.drawImage(targetImg, 0, 0);
-                let dataUrl = c.toDataURL('image/png');
-                this.sendFeatureToServer(dataUrl);
             };
         }
     };
