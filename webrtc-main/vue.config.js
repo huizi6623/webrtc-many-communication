@@ -1,4 +1,6 @@
 // const path = require('path');
+const https = require('https');
+const fs = require('fs');
 var HtmlWebpackPlugin = require('html-webpack-plugin') ;
 
 // 拼接路径
@@ -27,11 +29,16 @@ module.exports = {
         proxy: {
             '/': {
                 ws: false, // websocket 不需要代理
-                target: 'http://localhost:3001',
+                target: 'http://10.128.229.85:3001',
                 changeOrigin: true
             }
         },
-        port: '3221'
+        port: '3221',
+        https: {
+            key: fs.readFileSync('../private.key'),
+            // ca: [fs.readFileSync('./ca-cert.pem')],
+            cert: fs.readFileSync('../mydomain.crt')
+        }
     },
     productionSourceMap: false,
     // 默认设置: https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-service/lib/config/base.js

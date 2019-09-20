@@ -16,6 +16,8 @@
 <script>
     import socket from '../../utils/socket';
 
+    import sizeof from 'object-sizeof';
+
     import targetUrl from '../../../static/lib/examples/demo_yanhaoran/images/target1.jpg' ;
     import modelJDUrl from '../../../static/lib/examples/demo_yanhaoran/model/jd_model.JD'
     import awesomeUrl from '../../../static/lib/examples/demo_yanhaoran/images/awesome.png' ;
@@ -198,15 +200,13 @@
                     // 在当前peerConnection对象上增加一个time属性，表示当前链接通过服务器传输数据时延
                     this.peerList[data.peerName].time = data.updateTime;
                 });
-                socket.on('openCvFeature', data => {
-                    console.log(data, 'ddddddddd')
-                })
             },
             sendMessage(data) {
                 // 通过datachannel传输数据
                 // console.log('传输数据', data);
+                data.startTime = new Date().getTime();
                 for (let k in this.peerList) {
-                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(data);
+                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(JSON.stringify(data));
                 }
             },
             // 将当前时延信息发送给服务器
@@ -214,9 +214,9 @@
                 socket.emit('time', {roomid: this.$route.params.roomid, account: this.$route.params.account, img:data, time: new Date()});
             },
             // 将特征点数据发送给服务器
-            sendFeatureToServer(data) {
+            sendFeatureToServer(data, isOrigin = false) {
                 // 给服务器发送数据
-                socket.emit('feature', {roomid: this.$route.params.roomid, account: this.$route.params.account, feature: data});
+                socket.emit('feature', {roomid: this.$route.params.roomid, account: this.$route.params.account, feature: data, isOrigin: isOrigin, startTime: new Date().getTime()});
             },
             createDataChannel(dataChannel) {
                 dataChannel.onopen = (e) => {
@@ -227,6 +227,7 @@
                 };
                 dataChannel.onmessage = (e) => {
                     let data = JSON.parse(e.data);
+                    socket.emit('d2dTime', (new Date().getTime() - data.startTime));
                     let position = data.position;
                     let rotation = data.rotation;
                     // console.log(data, 'data');
@@ -706,9 +707,10 @@
                 var targetImg = this.$refs.targetImg
                 var grayTarget = trainer.getGrayScaleMat(targetImg);
 
+                // var pattern = null;
                 var pattern = trainer.trainPattern(grayTarget);
 
-                // console.log(pattern, 'patten');
+                console.log(pattern, 'patten');
 
                 var mm_kernel = new jsfeat.motion_model.homography2d();
                 var frameId = 0;
@@ -852,16 +854,65 @@
                     return new_xy;
                 }
 
+                socket.on('openCvFeature', data => {
+                    console.log('python处理结果传输时间：' + (new Date().getTime() - data.startTime) + 'ms');
+                    console.log('feature数据大小' + (sizeof(data.feature) / 1024).toFixed(2) + 'K');
+                    var features = data.feature;
+                    features.descriptors.buffer = {};
+                    features.descriptors.buffer.u8 = features.descriptors.data;
+                    features.descriptors.buffer.i32 = new jsfeat.matrix_t(features.descriptors.cols, features.descriptors.rows, jsfeat.S32_t | jsfeat.C2_t, features.descriptors.data);
+                    console.log(features, 'opencvfeature')
+                    // if(data.isOrigin){
+                    //     // pattern = features;
+                    //     console.log(features, 'patttttt');
+                    //     return;
+                    // }
+                    //
+                    // // var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
+                    // var matches = trainer.matchPattern(features.descriptors, features.descriptors);
+                    // var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);
+                    //
+                    // var keyPoints;
+                    // if (result && result.goodMatch > 8) {
+                    //     keyPoints = result.goodPoint;
+                    //     patternPoint = result.patternPoint;
+                    // } else {
+                    //     keyPoints = features.keyPoints;
+                    // }
+                    //
+                    // for (var i = 0; i < keyPoints.length; ++i) {
+                    //     if (patternPoint && keyPoints[i].x < canvasWidth && keyPoints[i].y < canvasHeight) {
+                    //         curr_xy[i << 1] = keyPoints[i].x;
+                    //         curr_xy[(i << 1) + 1] = keyPoints[i].y;
+                    //         pattern_xy[i << 1] = patternPoint[i].x;
+                    //         pattern_xy[(i << 1) + 1] = patternPoint[i].y;
+                    //     }
+                    // }
+                    // point_count = keyPoints.length;
+                    // console.log(point_count);
+                    // console.log(format_xy(pattern_xy, point_count));
+                })
+
                 function on_canvas_click(e) {
                     var imageData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+
+                    var start_time = new Date().getTime();
                     let base64Img = canvas.toDataURL('image/png');
+                    var run_time = (new Date().getTime() - start_time);
+                    console.log('转base64时间：' + run_time + ' ms');
+                    let imgUrl = base64Img.replace(/^data:image\/\w+;base64,/, "");
+                    let eqTagIndex = imgUrl.indexOf("=");
+                    imgUrl = eqTagIndex != -1 ? base64Img.substring(0,eqTagIndex) : base64Img;
+                    let strLen = imgUrl.length;
+                    let size = strLen - (strLen / 8) * 2;
+                    size = (size/1024).toFixed(2);
+                    console.log('base64大小：' + size + 'K');
+
                     self.sendFeatureToServer(base64Img);
-                    // var trainer = new FeatTrainer();
+
+                    var trainer = new FeatTrainer();
                     var grayImage = trainer.getGrayScaleMat(imageData);
-
                     var features = trainer.describeFeatures(grayImage);
-
-                    console.log(features, 'feaaaaaa');
 
                     var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
                     var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);
@@ -885,7 +936,6 @@
                     point_count = keyPoints.length;
                     // console.log(point_count);
                     // console.log(format_xy(pattern_xy, point_count));
-
                 }
 
                 canvas.addEventListener('click', on_canvas_click, false);
@@ -1021,7 +1071,8 @@
                 let data = {};
                 data.position = this.markerObject3D.children[0].position;
                 data.rotation = this.camera.rotation;
-                this.sendMessage(JSON.stringify(data));
+                console.log('d2d数据大小: ' + (sizeof(data)/1024).toFixed(2) + 'K');
+                this.sendMessage(data);
             }
         },
         mounted() {
@@ -1037,6 +1088,7 @@
             targetImg.src = targetUrl;
             targetImg.onload = () => {
                 this.init();
+                this.sendFeatureToServer(targetUrl, true);
             };
         }
     };

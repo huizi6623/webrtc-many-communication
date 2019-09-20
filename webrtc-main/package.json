@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "element-ui": "^2.6.1",
+    "object-sizeof": "^1.5.1",
     "socket.io": "^2.1.1",
     "vue": "^2.5.17",
     "vue-router": "^3.0.1",

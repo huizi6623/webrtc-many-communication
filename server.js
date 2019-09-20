@@ -10,6 +10,7 @@ const static = require('koa-static');  // 处理静态资源
 const socket = require('koa-socket');
 const child_process = require('child_process');
 const users = {}; // 保存用户
+const https = require('https');
 
 const io = new socket({
     ioOptions: {
@@ -18,8 +19,15 @@ const io = new socket({
     }
 });
 
+var options = {
+    key: fs.readFileSync('./private.key'),
+    // ca: [fs.readFileSync('./ca-cert.pem')],
+    cert: fs.readFileSync('./mydomain.crt')
+};
+
 // 创建一个Koa对象表示web app本身:
 const app = new Koa();
+
 // socket注入应用
 io.attach(app);
 app.use(static(
@@ -111,34 +119,85 @@ app._io.on( 'connection', sock => {
             }
         }
     });
+    sock.on('d2dTime', data => {
+        console.log('d2d时延：' + data);
+    });
     sock.on('feature', data => {
-        var imgData = data.feature;
-        //过滤data:URL
-        var base64Data = imgData.replace(/^data:image\/\w+;base64,/, "");
-        var dataBuffer = new Buffer.from(base64Data, 'base64');
-        let imageUrl = './images/' + new Date().getTime() + '.png';
-        fs.writeFile(imageUrl, dataBuffer, function(err) {
-            if(err){
-                console.log(err);
-            }else{
-                console.log("保存成功！");
-                workerPython();
-            }
-        });
+        console.log('base64传输时间：' + (new Date().getTime() - data.startTime) + 'ms');
+        let imageUrl;
+        if(data.isOrigin){
+            imageUrl = './public/' + data.feature;
+            console.log(imageUrl);
+            workerPython();
+        }else {
+            var imgData = data.feature;
+            //过滤data:URL
+            var base64Data = imgData.replace(/^data:image\/\w+;base64,/, "");
+            var dataBuffer = new Buffer.from(base64Data, 'base64');
+            imageUrl = './images/' + new Date().getTime() + '.png';
+            fs.writeFile(imageUrl, dataBuffer, function(err) {
+                if(err){
+                    console.log(err);
+                }else{
+                    console.log("保存成功！");
+                    workerPython();
+                }
+            });
+        }
 
         function workerPython() {
             let workerProcess = child_process.spawn('python', ['feature.py', imageUrl]);
+            let keyPoints = [];
+            let descriptors = {};
+            let flag = 0;
+            descriptors.data = [];
 
             workerProcess.stdout.on('data', function (data) {
-                sock.emit('openCvFeature', data);
-                console.log('stdout: ' + data);
+                let string = String(data);
+                // console.log(string)
+                string = string.split('\n');
+                for(let i = 0; i < string.length; i ++){
+                    string[i] = string[i].trim();
+                    if(string[i] == 'keyPoints' || string[i] == 'cols' || string[i] == 'rows' || string[i] == 'descriptors'){
+                        flag = string[i];
+                        continue;
+                    }
+                    switch(flag){
+                        case 'keyPoints':
+                            let str = string[i].substring(1, string[i].length - 1);
+                            str = str.split(',');
+                            let obj = {};
+                            obj.x = parseFloat(str[0]);
+                            obj.y = parseFloat(str[1]);
+                            keyPoints.push(obj);
+                            break;
+                        case 'cols':
+                            descriptors.cols = parseInt(string[i]);
+                            break;
+                        case 'rows':
+                            descriptors.rows = parseInt(string[i]);
+                            break;
+                        case 'descriptors':
+                            let curStr = string[i].replace('[', '').replace(']', '').trim();
+                            curStr = curStr.split(/\s+/);
+                            curStr.forEach(cur => {
+                                let n = parseInt(cur);
+                                if(!isNaN(n)){
+                                    descriptors.data.push(parseInt(cur));
+                                }
+                            });
+                            break;
+                    }
+                }
             });
 
             workerProcess.stderr.on('data', function (data) {
                 console.log('stderr: ' + data);
             });
 
-            // console.log(data);
+            workerProcess.on('close', (code) => {
+                sock.emit('openCvFeature', {feature: {keyPoints, descriptors}, isOrigin: data.isOrigin, startTime: new Date().getTime()})
+            });
         }
     });
 });
@@ -149,8 +208,7 @@ app._io.on('disconnect', (sock) => {
     console.log(`disconnect id => ${users}`);
 });
 
-// 在端口3001监听:
-let port = 3001;
-app.listen(port, _ => {
-    console.log('app started at port ...' + port);
-});
+// https.createServer(options, app.callback())
+    app.listen(3001, () => {
+        console.log(`server running success at 3001`)
+    });
