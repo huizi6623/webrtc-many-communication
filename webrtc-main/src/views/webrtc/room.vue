@@ -10,6 +10,10 @@
             <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
             <div id="log" class="alert alert-info" style="z-index: 2;position: absolute;top: 70%;left: 0;"></div>
         </div>
+        <div>
+            <img src="../../assets/image.svg" />
+            <img src="../../assets/video.svg" />
+        </div>
     </div>
 </template>
 
@@ -200,6 +204,9 @@
                     // 在当前peerConnection对象上增加一个time属性，表示当前链接通过服务器传输数据时延
                     this.peerList[data.peerName].time = data.updateTime;
                 });
+                socket.on('contralMsgBack', data => {
+                    // alert('时间：' + (new Date().getTime() - data.startTime));
+                })
             },
             sendMessage(data) {
                 // 通过datachannel传输数据
@@ -207,6 +214,7 @@
                 data.startTime = new Date().getTime();
                 for (let k in this.peerList) {
                     this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(JSON.stringify(data));
+                    socket.emit('contralMsg', {...data, roomid: this.$route.params.roomid, account: this.$route.params.account});
                 }
             },
             // 将当前时延信息发送给服务器
@@ -227,7 +235,8 @@
                 };
                 dataChannel.onmessage = (e) => {
                     let data = JSON.parse(e.data);
-                    socket.emit('d2dTime', (new Date().getTime() - data.startTime));
+                    let curTime = new Date().getTime();
+                    socket.emit('d2dTime', {time: (curTime - data.startTime), curTime: curTime, startTime: data.startTime});
                     let position = data.position;
                     let rotation = data.rotation;
                     // console.log(data, 'data');
@@ -911,8 +920,12 @@
                     self.sendFeatureToServer(base64Img);
 
                     var trainer = new FeatTrainer();
+
                     var grayImage = trainer.getGrayScaleMat(imageData);
+                    let startTime = new Date().getTime();
                     var features = trainer.describeFeatures(grayImage);
+                    // alert('提取特征时间：' + (new Date().getTime() - startTime));
+                    console.log('特征大小：' + sizeof(features) / 1024)
 
                     var matches = trainer.matchPattern(features.descriptors, pattern.descriptors);
                     var result = trainer.findTransform(matches, features.keyPoints, pattern.keyPoints);

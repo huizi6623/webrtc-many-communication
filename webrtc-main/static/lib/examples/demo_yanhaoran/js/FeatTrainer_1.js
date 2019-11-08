@@ -141,9 +141,13 @@ var FeatTrainer =  (function () {
         }
         jsfeat.imgproc.gaussian_blur(img_u8, img_u8_smooth, this.blurSize);
         var max_per_level = this.keyPointsPerlevel;
+
         var num_corners = this.detectKeyPoints(img_u8_smooth, screen_corners, max_per_level);
+
         var descriptors = new jsfeat.matrix_t(32, max_per_level, jsfeat.U8_t | jsfeat.C1_t);
+
         jsfeat.orb.describe(img_u8_smooth, screen_corners, num_corners, descriptors);
+
         return {
             keyPoints: screen_corners.slice(0, num_corners), descriptors: descriptors
         };

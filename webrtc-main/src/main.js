@@ -3,13 +3,13 @@ import App from './App.vue';
 import router from './router/router';
 import store from './store/store';
 import socket from './utils/socket';
-import ElementUI from 'element-ui';
 import BenchMark from 'benchmark';
-import 'element-ui/lib/theme-chalk/index.css';
-Vue.use(ElementUI);
+import Vant from 'vant';
+import 'vant/lib/button/style';
+
+Vue.use(Vant);
 
 let suite = new BenchMark.Suite;
-
 function test1(){
     let num = 1, i =1;
 

@@ -3,6 +3,7 @@
         <div class="video-box" ref="video-box">
             <video class="video-mine" autoplay controls ref="video-mine"></video>
         </div>
+        <other-function></other-function>
         <div class="text-box">
             <textarea :value="receiveText"></textarea>
             <div class="send-box">
@@ -15,8 +16,12 @@
 
 <script>
     import socket from '../../utils/socket';
+    import OtherFunction from '../../Components/OtherFunction';
     export default {
         name: 'home',
+        components: {
+            OtherFunction,
+        },
         data() {
             return {
                 roomid: this.$route.params.roomid,
@@ -139,27 +144,27 @@
                     if(v.account.indexOf(this.$route.params.account) == -1){
                         return ;
                     }
-                     console.log('take_offer', this.peerList[v.account], v);
-                     if(!this.peerList[v.account]){
-                         let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false ;
-                         v.isOffer = isOffer ;
-                         console.log('create')
-                         this.getPeerConnection(v)
-                     }
-                     if(!this.peerList[v.account].isOffer){
-                         this.peerList[v.account].setRemoteDescription(v.sdp, () => {
-                             console.log('setremote')
-                             this.peerList[v.account].createAnswer().then((desc) => {
-                                 console.log('send-answer', desc, v);
-                                 this.peerList[v.account].setLocalDescription(desc, () => {
-                                     socket.emit('answer', {'sdp': this.peerList[v.account].localDescription, roomid: this.$route.params.roomid, account: v.account});
-                                 });
-                             }).catch( e => {
-                                 console.log(e)
-                             });
-                         }, (err) => { console.log(err)
-                         });
-                     }
+                    console.log('take_offer', this.peerList[v.account], v);
+                    if(!this.peerList[v.account]){
+                        let isOffer = v.account.split('-')[0] == this.$route.params.account ? true : false ;
+                        v.isOffer = isOffer ;
+                        console.log('create')
+                        this.getPeerConnection(v)
+                    }
+                    if(!this.peerList[v.account].isOffer){
+                        this.peerList[v.account].setRemoteDescription(v.sdp, () => {
+                            console.log('setremote')
+                            this.peerList[v.account].createAnswer().then((desc) => {
+                                console.log('send-answer', desc, v);
+                                this.peerList[v.account].setLocalDescription(desc, () => {
+                                    socket.emit('answer', {'sdp': this.peerList[v.account].localDescription, roomid: this.$route.params.roomid, account: v.account});
+                                });
+                            }).catch( e => {
+                                console.log(e)
+                            });
+                        }, (err) => { console.log(err)
+                        });
+                    }
                 });
                 socket.on('answer', v => {
                     if(v.account.indexOf(this.$route.params.account) == -1){
@@ -179,18 +184,22 @@
                     }
                 });
                 socket.on('__ice_candidate', v => {
-                     // console.log('take_candidate', v.candidate);
+                    // console.log('take_candidate', v.candidate);
                     //如果是一个ICE的候选，则将其加入到PeerConnection中
                     if (v.candidate) {
                         this.peerList[v.account] && this.peerList[v.account].addIceCandidate(v.candidate).catch(() => {}// console.log('err', e)
                         );
                     }
                 });
-                socket.on('disconnected', id => {
-                    // console.log('disconnected', id);
-                    let dom = document.querySelector('#' + id);
+                socket.on('leave', data => {
+                    console.log(data.account + '离开了房间！');
+                    let key = [data.account, this.userName].sort().join('-');
+                    let dom = document.querySelector('#' + key);
                     if (dom) {
                         dom.remove();
+                    }
+                    if(this.peerList[key]){
+                        delete this.peerList[key];
                     }
                 })
             },
@@ -226,29 +235,26 @@
                     socket.emit('join', {roomid: this.$route.params.roomid, account: this.$route.params.account});
                 });
                 this.socketInit();
-                socket.on('joined', (data, account)=>{
-                    console.log('joined', data, account);
-                    if (data.length> 1) {
+                socket.on('joined', (data)=>{
+                    console.log('joined', data);
+                    if (data.length > 1) {
                         data.forEach(v => {
                             let obj = {};
                             let arr = [v.account, this.$route.params.account];
                             obj.account = arr.sort().join('-')
                             obj.isOffer = arr[0] == this.$route.params.account ? true : false ;
                             if (!this.peerList[obj.account] && v.account !== this.$route.params.account) {
-                                console.log('obj', obj);
+                                if(v !== data[0]) {
+                                    console.log(v.account + '进入了房间');
+                                }
                                 this.getPeerConnection(obj);
                                 if(this.peerList[obj.account].isOffer){
                                     this.createOffer(obj.account, this.peerList[obj.account])
                                 }
                             }
                         });
-                        // if (account === this.$route.params.account) {
-                        //     console.log('account', account);
-                        //     console.log(this.peerList, 'list')
-                        //     for (let k in this.peerList) {
-                        //         this.createOffer(k, this.peerList[k]);
-                        //     }
-                        // }
+                    } else if(data.length === 1) {
+                        console.log( data[0].account + '创建了房间' + this.roomid);
                     }
                 });
             });
@@ -258,15 +264,16 @@
 
 <style lang="scss">
     .room{
-        padding: 30px;
+        width: 100%;
+        height: 100%;
     }
     .video-box{
         display: flex;
         justify-content: flex-start;
         flex-wrap: wrap;
         video{
-            width:400px;
-            height: 300px;
+            width: 100%;
+            height: 100%;
             margin-right: 10px;
         }
     }

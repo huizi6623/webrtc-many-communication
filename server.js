@@ -10,7 +10,6 @@ const static = require('koa-static');  // 处理静态资源
 const socket = require('koa-socket');
 const child_process = require('child_process');
 const users = {}; // 保存用户
-const https = require('https');
 
 const io = new socket({
     ioOptions: {
@@ -18,12 +17,6 @@ const io = new socket({
         pingInterval: 5000,
     }
 });
-
-var options = {
-    key: fs.readFileSync('./private.key'),
-    // ca: [fs.readFileSync('./ca-cert.pem')],
-    cert: fs.readFileSync('./mydomain.crt')
-};
 
 // 创建一个Koa对象表示web app本身:
 const app = new Koa();
@@ -52,8 +45,13 @@ app.use(async (ctx, next) => {
 });
 
 app._io.on( 'connection', sock => {
-    // console.log(sock.id, 'sockkkkk');
+    let roomId = null;
+    let account = null;
+
     sock.on('join', data=>{
+        roomId = data.roomid;
+        account = data.account;
+
         sock.join(data.roomid, () => {
             if (!users[data.roomid]) {
                 users[data.roomid] = [];
@@ -77,6 +75,30 @@ app._io.on( 'connection', sock => {
             // sock.to(data.roomid).emit('joined',data.account);
         });
     });
+    sock.on('disconnect', () => {
+        let index = -1;
+        console.log(account, 'accc');
+        let currentRoomUsers = users[roomId];
+        if(!currentRoomUsers){
+            return;
+        }
+
+        for(let i = 0; i < currentRoomUsers.length; i ++){
+            if(currentRoomUsers[i].account == account){
+                index = i;
+                break;
+            }
+        }
+        console.log(index, 'indexxxxxx');
+        if (index !== -1) {
+            users[roomId].splice(index, 1);
+        }
+        console.log(users[roomId]);
+
+        sock.leave(roomId);    // 退出房间
+        app._io.in(roomId).emit('leave', {account: account, roomId: roomId});
+        console.log(account + '退出了房间' + roomId);
+    });
     sock.on('offer', data=>{
         // console.log('offer', data);
         sock.to(data.roomid).emit('offer',data);
@@ -96,7 +118,7 @@ app._io.on( 'connection', sock => {
 
         var speed = 243/ ((new Date()-new Date(data.time))/1000) / 1024;
 
-        // console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
+        console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
 
         if(users[data.roomid]){
             let currentUser = users[data.roomid].filter(v => v.account === data.account)[0];
@@ -119,8 +141,25 @@ app._io.on( 'connection', sock => {
             }
         }
     });
+    sock.on('contralMsg', data => {
+
+        // console.log(new Date()-new Date(data.time),'时延',speed,'带宽');
+
+        if(users[data.roomid]){
+            let currentUser = users[data.roomid].filter(v => v.account === data.account)[0];
+            if(currentUser){
+                // console.log(currentUser);
+                let otherUsers = users[data.roomid].filter(v => v.account !== data.account);
+                if(otherUsers.length) {
+                    otherUsers.forEach((item) => {
+                        item.socket.emit('contralMsgBack', data);
+                    });
+                }
+            }
+        }
+    });
     sock.on('d2dTime', data => {
-        console.log('d2d时延：' + data);
+        console.log('d2d时延：' + data.time + ' ' + data.curTime + ' ' + data.startTime);
     });
     sock.on('feature', data => {
         console.log('base64传输时间：' + (new Date().getTime() - data.startTime) + 'ms');
@@ -205,6 +244,8 @@ app._io.on('disconnect', (sock) => {
     for (let k in users) {
         users[k] = users[k].filter(v => v.id !== sock.id);
     }
+
+    disconnected
     console.log(`disconnect id => ${users}`);
 });
 

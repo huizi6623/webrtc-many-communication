@@ -1,7 +1,4 @@
-// const path = require('path');
-const https = require('https');
 const fs = require('fs');
-var HtmlWebpackPlugin = require('html-webpack-plugin') ;
 
 // 拼接路径
 // function resolve (dir) {
@@ -19,7 +16,7 @@ module.exports = {
     pages: {
         index: {
             entry: 'src/main.js',
-            template: 'index.html',
+            template: 'index1.html',
             filename: '../public/index.html',
             title: '首页',
         }
@@ -29,7 +26,7 @@ module.exports = {
         proxy: {
             '/': {
                 ws: false, // websocket 不需要代理
-                target: 'http://10.128.229.85:3001',
+                target: 'http://10.128.236.132:3001',
                 changeOrigin: true
             }
         },

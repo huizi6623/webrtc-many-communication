@@ -9,7 +9,6 @@
     "start": "vue-cli-service serve"
   },
   "dependencies": {
-    "element-ui": "^2.6.1",
     "object-sizeof": "^1.5.1",
     "socket.io": "^2.1.1",
     "vue": "^2.5.17",
@@ -25,6 +24,7 @@
     "file-loader": "^4.1.0",
     "node-sass": "^4.9.0",
     "sass-loader": "^7.0.1",
+    "vant": "^2.2.12",
     "vue-template-compiler": "^2.5.17"
   }
 }
