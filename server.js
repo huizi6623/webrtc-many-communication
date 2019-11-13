@@ -51,6 +51,7 @@ app._io.on( 'connection', sock => {
     sock.on('join', data=>{
         roomId = data.roomid;
         account = data.account;
+        console.log(account + '进入了房间！');
 
         sock.join(data.roomid, () => {
             if (!users[data.roomid]) {
@@ -66,7 +67,7 @@ app._io.on( 'connection', sock => {
             if (!arr.length) {
                 users[data.roomid].push(obj);
             }
-            // sockS[data.account] = sock;
+
             let params = [];
             users[data.roomid].forEach((item) => {
                 params.push({account: item.account});
@@ -77,7 +78,6 @@ app._io.on( 'connection', sock => {
     });
     sock.on('disconnect', () => {
         let index = -1;
-        console.log(account, 'accc');
         let currentRoomUsers = users[roomId];
         if(!currentRoomUsers){
             return;
@@ -89,27 +89,25 @@ app._io.on( 'connection', sock => {
                 break;
             }
         }
-        console.log(index, 'indexxxxxx');
         if (index !== -1) {
             users[roomId].splice(index, 1);
         }
-        console.log(users[roomId]);
 
         sock.leave(roomId);    // 退出房间
         app._io.in(roomId).emit('leave', {account: account, roomId: roomId});
         console.log(account + '退出了房间' + roomId);
     });
     sock.on('offer', data=>{
-        // console.log('offer', data);
-        sock.to(data.roomid).emit('offer',data);
+        //console.log('offer', data.account);
+        sock.to(data.roomid).emit('offerFromOthers',data);  //发给房间内除自己的所有人
     });
     sock.on('answer', data=>{
-        // console.log('answer', data);
-        sock.to(data.roomid).emit('answer',data);
+        //console.log('answer', data);
+        sock.to(data.roomid).emit('answerFromOthers',data);
     });
     sock.on('__ice_candidate', data=>{
         // console.log('__ice_candidate', data);
-        sock.to(data.roomid).emit('__ice_candidate',data);
+        sock.to(data.roomid).emit('iceCandidate',data);
     });
     sock.on('speed', data => {
         console.log('设备处理速度',data,'ops/sec');
@@ -240,16 +238,8 @@ app._io.on( 'connection', sock => {
         }
     });
 });
-app._io.on('disconnect', (sock) => {
-    for (let k in users) {
-        users[k] = users[k].filter(v => v.id !== sock.id);
-    }
-
-    disconnected
-    console.log(`disconnect id => ${users}`);
-});
 
 // https.createServer(options, app.callback())
-    app.listen(3001, () => {
-        console.log(`server running success at 3001`)
-    });
+app.listen(3001, () => {
+    console.log(`server running success at 3001`)
+});

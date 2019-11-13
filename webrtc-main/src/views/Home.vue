@@ -1,14 +1,14 @@
 <template>
-    <div class="many">
-        <div class="center">
+    <div class="center">
+        <div class="item-box">
             <label>登录名：</label>
             <input type="text" v-model="account">
-            <br>
+        </div>
+        <div class="item-box">
             <label>房间号：</label>
             <input type="text" v-model="roomid">
-            <br>
-            <button @click="join">加入房间</button>
         </div>
+        <button @click="join">加入房间</button>
     </div>
 </template>
 
@@ -32,15 +32,15 @@
 </script>
 
 <style scoped>
-    .many{
-        text-align: center;
-    }
     .center{
         width:80vw;
         left:10vw;
         position: relative;
-        margin-top: 50%;
+        top: 50%;
         transform: translate(0, -50%);
+        text-align: center;
+    }
+    .item-box{
         display: flex;
         flex-wrap: wrap;
         justify-content: space-around;
@@ -50,11 +50,8 @@
         line-height: 40px;
         margin: 10px 0;
     }
-    label{
-        width: 20%;
-    }
     input{
-        width: 70%;
+        flex: 1;
         box-sizing: border-box;
         border: 1px solid #5ac6ca;
         border-radius: 2px;
