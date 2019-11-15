@@ -9,6 +9,7 @@
     "start": "vue-cli-service serve"
   },
   "dependencies": {
+    "jsfeat": "0.0.8",
     "object-sizeof": "^1.5.1",
     "socket.io": "^2.1.1",
     "vue": "^2.5.17",

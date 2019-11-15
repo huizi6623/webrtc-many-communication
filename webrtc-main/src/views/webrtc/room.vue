@@ -11,8 +11,8 @@
             <div id="log" class="alert alert-info" style="z-index: 2;position: absolute;top: 70%;left: 0;"></div>
         </div>
         <div>
-            <img src="../../assets/image.svg" />
-            <img src="../../assets/video.svg" />
+            <img src="../../assets/images/image.svg" />
+            <img src="../../assets/images/video.svg" />
         </div>
     </div>
 </template>

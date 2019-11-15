@@ -5,6 +5,8 @@
         </div>
         <other-function
                 @changeCamera="changeCamera"
+                @showIntroduction="showIntroduction"
+                @showScan="showScan"
         ></other-function>
         <div class="text-box">
             <textarea disabled :value="receiveText" ref="receive-text"></textarea>
@@ -13,18 +15,38 @@
                 <button @click="sendMessage">发送</button>
             </div>
         </div>
+        <transition name="fade">
+            <image-or-video-introduction
+                    :product-id="productId"
+                    :is-image="isShowImage"
+                    @close="closeIntroduction"
+                    v-if="isShowIntroduction"
+            ></image-or-video-introduction>
+        </transition>
+        <transition name="fade">
+            <scan
+                   v-if="isShowScan"
+                   @close="closeScan"
+                   @matchSuccess="matchSuccess"
+            ></scan>
+        </transition>
     </div>
 </template>
 
 <script>
     import socket from '../../utils/socket';
     import OtherFunction from '../../Components/OtherFunction';
-    import { getBrowser } from '../../utils/common';
+    import ImageOrVideoIntroduction from '../../Components/ImageOrVideoIntroduction';
+    import Scan from '../../Components/Scan';
+    import productData from '../../utils/data';
+    import { initPatten } from "../../utils/feat_1";
 
     export default {
         name: 'room',
         components: {
             OtherFunction,
+            ImageOrVideoIntroduction,
+            Scan
         },
         data() {
             return {
@@ -35,7 +57,11 @@
                 receiveText: '',
                 sendText: '',
                 isSendTextDisabled: true,
-                isUser: true
+                isUser: true,
+                productId: 1,
+                isShowIntroduction: false,
+                isShowImage: true,
+                isShowScan: false
             }
         },
         beforeDestroy() {
@@ -85,7 +111,7 @@
                                 video.src = window.URL.createObjectURL(stream);
                             }
                             this.localStream = stream;
-                            video.onloadedmetadata = function(e) {
+                            video.onloadedmetadata = function() {
                                 video.play();
                             };
                             resolve();
@@ -156,11 +182,11 @@
             },
             // DataChannel初始化
             createDataChannel(dataChannel){
-                dataChannel.onopen = (e) => {
+                dataChannel.onopen = () => {
                     console.log('dataChannel已打开！') ;
                     this.isSendTextDisabled = false;
                 } ;
-                dataChannel.onclose = (e) => {
+                dataChannel.onclose = () => {
                     console.log('dataChannel已关闭！') ;
                 } ;
                 dataChannel.onmessage = (e) => {
@@ -261,8 +287,10 @@
                     // console.log('take_candidate', v.candidate);
                     //如果是一个ICE的候选，则将其加入到PeerConnection中
                     if (v.candidate) {
-                        this.peerList[v.account] && this.peerList[v.account].addIceCandidate(v.candidate).catch(() => {}// console.log('err', e)
-                        );
+                        this.peerList[v.account] &&
+                        this.peerList[v.account]
+                            .addIceCandidate(v.candidate)
+                            .catch(e => { console.log('err', e)});
                     }
                 });
                 // 监听客户端leave事件
@@ -319,7 +347,48 @@
                         alert(err);
                     });
                 });
-            }
+            },
+            // 初始化识别图
+            setRecognitionImgs(){
+                let imgs = [] ;
+                let p = new Array(productData.length) ;
+                for(let i = 0; i < productData.length; i ++){
+                    p[i] = new Promise(function(resolve){
+                        let img = new Image() ;
+                        img.src = productData[i].targetImgUrl;
+                        img.onload = function(){
+                            imgs[i] = img ;
+                            resolve() ;
+                            // document.body.appendChild(img);
+                        } ;
+                    }) ;
+                }
+                Promise.all(p).then(function(){
+                    initPatten(imgs, imgs.length) ;
+                }) ;
+            },
+            // 识别成功
+            matchSuccess(id){
+                this.productId = id - 1;
+                this.isShowScan = false;
+            },
+            // 打开扫描框
+            showScan() {
+                this.isShowScan = true;
+            },
+            // 关闭扫描框
+            closeScan() {
+                this.isShowScan = false;
+            },
+            // 打开图片/视频介绍
+            showIntroduction(type) {
+                this.isShowImage = type === 'image' ? true : false;
+                this.isShowIntroduction = true;
+            },
+            // 关闭图片/视频介绍
+            closeIntroduction() {
+                this.isShowIntroduction = false;
+            },
         },
         mounted() {
             this.$nextTick(() => {
@@ -327,6 +396,7 @@
                     socket.emit('join', {roomid: this.roomid, account: this.account});
                 });
                 this.socketInit();
+                this.setRecognitionImgs();
             });
         }
     };
@@ -358,25 +428,6 @@
             right: 0;
             height: 25%;
         }
-    }
-
-    #dataChannelSend {
-        bottom: 0;
-        width: 80%;
-        height: 23px;
-        border: 1px solid #ccc;
-        font-size: 14px;
-        line-height: 16px;
-        vertical-align: bottom;
-    }
-
-    #sendButton {
-        position: absolute;
-        bottom: 0;
-        left: 82%;
-        width: 18%;
-        height: 25px;
-        border: 1px solid #ccc;
     }
     .text-box {
         position: absolute;
@@ -423,6 +474,13 @@
                 background: #5ac6ca;
             }
         }
+    }
+
+    .fade-enter-active, .fade-leave-active {
+        transition: opacity .5s;
+    }
+    .fade-enter, .fade-leave-to {
+        opacity: 0;
     }
 
 </style>

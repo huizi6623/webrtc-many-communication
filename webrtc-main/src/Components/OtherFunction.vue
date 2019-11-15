@@ -17,11 +17,11 @@
 </template>
 
 <script>
-    import switchPicUrl from '../assets/switch.svg';
-    import scanPicUrl from '../assets/scan.svg';
-    import imagePicUrl from '../assets/image.svg';
-    import videoPicUrl from '../assets/video.svg';
-    import robotPicUrl from '../assets/robot.svg';
+    import switchPicUrl from '../assets/images/switch.svg';
+    import scanPicUrl from '../assets/images/scan.svg';
+    import imagePicUrl from '../assets/images/image.svg';
+    import videoPicUrl from '../assets/images/video.svg';
+    import robotPicUrl from '../assets/images/robot.svg';
 
     export default {
         name: "OtherFunction",
@@ -49,6 +49,16 @@
                 switch(this.value){
                     case 0:
                         this.$emit('changeCamera');
+                        break;
+                    case 1:
+                        this.$emit('showScan');
+                        break;
+                    case 2:
+                        this.$emit('showIntroduction', 'image');
+                        break;
+                    case 3:
+                        this.$emit('showIntroduction', 'video');
+                        break;
                 }
                 this.value = -1;
             }
@@ -69,7 +79,7 @@
         height: 10vw;
         line-height: 10vw;
         color: #fff;
-        background: url('../assets/arrow.svg') no-repeat center center / 70% 70% ;
+        background: url('../assets/images/arrow.svg') no-repeat center center / 70% 70% ;
         transition: transform 0.2s;
     }
     .open /deep/ .title-class{
