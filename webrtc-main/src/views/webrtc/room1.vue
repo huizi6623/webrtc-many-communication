@@ -1,13 +1,20 @@
 <template>
     <div class="room">
+        <!--视频部分-->
         <div class="video-box" ref="video-box">
             <video class="local-video" autoplay playsinline muted ref="local-video"></video>
+            <div class="remote-video-outer-box" :class="{'remote-video-box-open': isOpenRemoteVideo}">
+                <div class="open-video-arrow" v-if="isShowOpenVideoArrow"  @click="openOrCloseRemoteVideo"></div>
+                <div class="remote-video-box" ref="remote-video-box"></div>
+            </div>
         </div>
+        <!--左上角其他功能-->
         <other-function
                 @changeCamera="changeCamera"
                 @showIntroduction="showIntroduction"
                 @showScan="showScan"
         ></other-function>
+        <!--文字消息部分-->
         <div class="text-box">
             <textarea disabled :value="receiveText" ref="receive-text"></textarea>
             <div class="send-box">
@@ -15,6 +22,8 @@
                 <button @click="sendMessage">发送</button>
             </div>
         </div>
+        <model></model>
+        <!--图文/视频介绍弹窗-->
         <transition name="fade">
             <image-or-video-introduction
                     :product-id="productId"
@@ -23,6 +32,7 @@
                     v-if="isShowIntroduction"
             ></image-or-video-introduction>
         </transition>
+        <!--扫描弹窗-->
         <transition name="fade">
             <scan
                    v-if="isShowScan"
@@ -38,6 +48,7 @@
     import OtherFunction from '../../Components/OtherFunction';
     import ImageOrVideoIntroduction from '../../Components/ImageOrVideoIntroduction';
     import Scan from '../../Components/Scan';
+    import Model from '../../Components/Model';
     import productData from '../../utils/data';
     import { initPatten } from "../../utils/feat_1";
 
@@ -46,7 +57,8 @@
         components: {
             OtherFunction,
             ImageOrVideoIntroduction,
-            Scan
+            Scan,
+            Model
         },
         data() {
             return {
@@ -57,17 +69,23 @@
                 receiveText: '',
                 sendText: '',
                 isSendTextDisabled: true,
-                isUser: true,
+                isUser: true,  //是否是前置摄像头
                 productId: 1,
                 isShowIntroduction: false,
                 isShowImage: true,
-                isShowScan: false
+                isShowScan: false,
+                isOpenRemoteVideo: false,
             }
         },
         beforeDestroy() {
             for (let k in this.peerList) {
                 this.peerList[k].close();
                 this.peerList[k] = null;
+            }
+        },
+        computed: {
+            isShowOpenVideoArrow() {
+                return Object.keys(this.peerList).length > 1;
             }
         },
         methods: {
@@ -124,7 +142,7 @@
             // 创建PeerConnection对象
             getPeerConnection(v) {
                 console.log(v, 'v')
-                let videoBox = this.$refs['video-box'];
+                let remoteVideoBox = this.$refs['remote-video-box'];
                 let pc_config = {'iceServers': [{"urls":"stun:stun.l.google.com:19302"}]};
                 let pc_constraints = {'optional': [{'DtlsSrtpKeyAgreement': true},{RtcDataChannels: true}]};
 
@@ -148,13 +166,22 @@
                     if (videos) {
                         videos.srcObject = event.streams[0];
                     } else {
+                        // 创建远程视频流
                         let video = document.createElement('video');
                         video.className = 'remote-video';
                         video.autoplay = 'true';
                         video.setAttribute('playsinline', true);
                         video.srcObject = event.streams[0];
-                        video.id = v.account;
-                        videoBox.append(video);
+                        // 增加下方名称
+                        let p = document.createElement('p');
+                        p.innerText = v.account.split('-').filter(item => item != this.account)[0];
+
+                        let videoItem = document.createElement('div');
+                        videoItem.className = 'remote-video-item';
+                        videoItem.appendChild(video);
+                        videoItem.appendChild(p);
+                        videoItem.id = v.account;
+                        remoteVideoBox.appendChild(videoItem);
                     }
                 };
                 //发送ICE候选到其他客户端
@@ -177,8 +204,8 @@
                     }
                 }
                 peer.isOffer = v.isOffer ;
-                this.peerList[v.account] = peer;
-                console.log(this.peerList, 'peerList')
+                this.$set(this.peerList, v.account, peer);
+                console.log(this.peerList, 2222222222)
             },
             // DataChannel初始化
             createDataChannel(dataChannel){
@@ -238,7 +265,7 @@
                 });
                 // 接收服务器中转的offer并回复answer
                 socket.on('offerFromOthers', v => {
-                    if(v.account.indexOf(this.account) == -1){
+                    if(v.account.split('-').indexOf(this.account) == -1){
                         return ;
                     }
                     console.log('take_offer', this.peerList[v.account], v);
@@ -268,7 +295,7 @@
                 });
                 // 接收服务器中转的answer
                 socket.on('answerFromOthers', v => {
-                    if(v.account.indexOf(this.account) == -1){
+                    if(v.account.split('-').indexOf(this.account) == -1){
                         return ;
                     }
                     console.log('take_answer', v.sdp, v);
@@ -389,6 +416,9 @@
             closeIntroduction() {
                 this.isShowIntroduction = false;
             },
+            openOrCloseRemoteVideo() {
+                this.isOpenRemoteVideo = !this.isOpenRemoteVideo;
+            }
         },
         mounted() {
             this.$nextTick(() => {
@@ -413,7 +443,6 @@
         height: 100%;
         video{
             box-sizing: border-box;
-            border: 1px solid #ccc;
             z-index: 2;
         }
         .local-video{
@@ -422,11 +451,62 @@
             left:0;
             object-fit: cover;
         }
-        .remote-video{
+        .remote-video-outer-box{
             position: absolute;
             top: 0;
             right: 0;
-            height: 25%;
+            height: 25vh;
+            display: flex;
+            max-width: 80vw;
+            align-items: center;
+            z-index: 2;
+            .open-video-arrow{
+                width: 8vw;
+                height: 8vw;
+                transform: rotate(90deg);
+                transition: transform 0.2s;
+                background: url('../../assets/images/arrow.svg') no-repeat center center / 70% 70%;
+            }
+            .remote-video-box{
+                flex: 1;
+                font-size: 0;
+                white-space: nowrap;
+                overflow-x: scroll;
+                .remote-video-item{
+                    position: relative;
+                    font-size: 0;
+                    display: none;
+                    .remote-video{
+                        height: 25vh;
+                    }
+                    p{
+                        position: absolute;
+                        top: 5px;
+                        left: 5px;
+                        height: 3vh;
+                        color: #fff;
+                        font-size: 16px;
+                        line-height: 3vh;
+                    }
+                }
+                .remote-video-item:first-child{
+                    display: inline-block;
+                }
+            }
+        }
+
+        .remote-video-box-open{
+            max-width: 85%;
+            overflow-x: scroll;
+            .open-video-arrow{
+                transform: rotate(270deg);
+            }
+            .remote-video-item{
+                display: inline-block !important;
+            }
+            .remote-video-item ~ .remote-video-item{
+                margin-left: 5vw;
+            }
         }
     }
     .text-box {
@@ -434,6 +514,7 @@
         bottom: 0;
         width: 100%;
         height: 210px;
+        z-index: 2;
         textarea {
             width: 100%;
             height: 170px;

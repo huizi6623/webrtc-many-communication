@@ -71,18 +71,19 @@
         position: absolute;
         top: 10px;
         left: 10px;
+        z-index: 2;
     }
     /deep/ .title-class{
         display: block;
         text-align: center;
         width: 10vw;
         height: 10vw;
-        line-height: 10vw;
-        color: #fff;
-        background: url('../assets/images/arrow.svg') no-repeat center center / 70% 70% ;
-        transition: transform 0.2s;
+        border-radius: 50%;
+        background: transparent url('../assets/images/ellipsis.svg') no-repeat center center / 70% 70% ;
+        transition: all 0.2s;
     }
     .open /deep/ .title-class{
+        background-image: url('../assets/images/arrow.svg');
         transform: rotate(180deg);
     }
     /deep/ .van-cell{

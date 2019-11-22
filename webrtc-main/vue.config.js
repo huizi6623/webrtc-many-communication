@@ -1,10 +1,5 @@
 const fs = require('fs');
 
-// 拼接路径
-// function resolve (dir) {
-//     return path.join(__dirname, dir)
-// }
-
 // 基础路径 注意发布之前要先修改这里
 let baseUrl = './';
 module.exports = {
@@ -26,7 +21,7 @@ module.exports = {
         proxy: {
             '/': {
                 ws: false, // websocket 不需要代理
-                target: 'http://10.128.236.132:3001',
+                target: 'http://10.128.203.5:3001',
                 changeOrigin: true
             }
         },
