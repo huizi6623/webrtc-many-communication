@@ -59,6 +59,8 @@
                     case 3:
                         this.$emit('showIntroduction', 'video');
                         break;
+                    case 4:
+                        this.$emit('showRobot');
                 }
                 this.value = -1;
             }

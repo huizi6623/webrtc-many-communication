@@ -13,6 +13,7 @@
                 @changeCamera="changeCamera"
                 @showIntroduction="showIntroduction"
                 @showScan="showScan"
+                @showRobot="showRobot"
         ></other-function>
         <!--文字消息部分-->
         <div class="text-box">
@@ -22,7 +23,8 @@
                 <button @click="sendMessage">发送</button>
             </div>
         </div>
-        <model></model>
+        <!--3D动画部分-->
+        <model v-if="isShowModel" :product-id="productId"></model>
         <!--图文/视频介绍弹窗-->
         <transition name="fade">
             <image-or-video-introduction
@@ -40,6 +42,13 @@
                    @matchSuccess="matchSuccess"
             ></scan>
         </transition>
+        <!--图灵机器人-->
+        <transition name="fade">
+            <robot
+                    v-if="isShowRobot"
+                    @close="closeRobot"
+            ></robot>
+        </transition>
     </div>
 </template>
 
@@ -49,6 +58,7 @@
     import ImageOrVideoIntroduction from '../../Components/ImageOrVideoIntroduction';
     import Scan from '../../Components/Scan';
     import Model from '../../Components/Model';
+    import Robot from '../../Components/Robot'
     import productData from '../../utils/data';
     import { initPatten } from "../../utils/feat_1";
 
@@ -58,7 +68,8 @@
             OtherFunction,
             ImageOrVideoIntroduction,
             Scan,
-            Model
+            Model,
+            Robot
         },
         data() {
             return {
@@ -75,6 +86,8 @@
                 isShowImage: true,
                 isShowScan: false,
                 isOpenRemoteVideo: false,
+                isShowModel: true,
+                isShowRobot: false,
             }
         },
         beforeDestroy() {
@@ -398,6 +411,7 @@
             matchSuccess(id){
                 this.productId = id - 1;
                 this.isShowScan = false;
+                this.isShowModel = true;
             },
             // 打开扫描框
             showScan() {
@@ -416,6 +430,14 @@
             closeIntroduction() {
                 this.isShowIntroduction = false;
             },
+            // 打开图灵机器人
+            showRobot(type) {
+                this.isShowRobot = true;
+            },
+            // 关闭图灵机器人
+            closeRobot() {
+                this.isShowRobot = false;
+            },
             openOrCloseRemoteVideo() {
                 this.isOpenRemoteVideo = !this.isOpenRemoteVideo;
             }
@@ -432,7 +454,7 @@
     };
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
     .room{
         width: 100%;
         height: 100%;

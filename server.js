@@ -2,9 +2,10 @@
  * Created by wyw on 2018/10/14.
  */
 
-const fs = require('fs');
+// const fs = require('fs');
 const Koa = require('koa'); // 封装了nodeJs的http模块，由express原班人马打造
 const path = require('path');
+const http = require('http');
 const koaSend = require('koa-send');
 const static = require('koa-static');  // 处理静态资源
 const socket = require('koa-socket');
@@ -109,6 +110,49 @@ app._io.on( 'connection', sock => {
         // console.log('__ice_candidate', data);
         sock.to(data.roomid).emit('iceCandidate',data);
     });
+    sock.on('robotReqMsg', data => {
+        console.log('111111')
+        console.log(data, 'data');
+        let sendData = {
+            "reqType":0,
+            "perception": {
+                "inputText": {
+                    "text": decodeURI(data)
+                },
+            },
+            "userInfo": {
+                "apiKey": "22e009b1199a47a0bd4fc4c76234e49d",
+                "userId": "511155"
+            }
+        };
+        sendData = JSON.stringify(sendData);
+
+        const options = {
+            hostname: 'openapi.tuling123.com',
+            path:'/openapi/api/v2',
+            // url: 'http://openapi.tuling123.com/openapi/api/v2',
+            method: 'POST',
+            json: true,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(sendData)
+            }
+        };
+        let answer = '';
+        let res = http.request(options, res => {
+            console.log("response: " + res.statusCode);
+            res.on('data',function(data){
+                answer += data;
+            }).on('end', function(){
+                sock.emit('robotAnswer', answer);
+                console.log(answer, 'answer')
+            });
+        }).on('error', function(e) {
+            console.log("error: " + e.message);
+        });
+        res.write(sendData);
+        res.end();
+    });
     sock.on('speed', data => {
         console.log('设备处理速度',data,'ops/sec');
     });
@@ -158,84 +202,6 @@ app._io.on( 'connection', sock => {
     });
     sock.on('d2dTime', data => {
         console.log('d2d时延：' + data.time + ' ' + data.curTime + ' ' + data.startTime);
-    });
-    sock.on('feature', data => {
-        console.log('base64传输时间：' + (new Date().getTime() - data.startTime) + 'ms');
-        let imageUrl;
-        if(data.isOrigin){
-            imageUrl = './public/' + data.feature;
-            console.log(imageUrl);
-            workerPython();
-        }else {
-            var imgData = data.feature;
-            //过滤data:URL
-            var base64Data = imgData.replace(/^data:image\/\w+;base64,/, "");
-            var dataBuffer = new Buffer.from(base64Data, 'base64');
-            imageUrl = './images/' + new Date().getTime() + '.png';
-            fs.writeFile(imageUrl, dataBuffer, function(err) {
-                if(err){
-                    console.log(err);
-                }else{
-                    console.log("保存成功！");
-                    workerPython();
-                }
-            });
-        }
-
-        function workerPython() {
-            let workerProcess = child_process.spawn('python', ['feature.py', imageUrl]);
-            let keyPoints = [];
-            let descriptors = {};
-            let flag = 0;
-            descriptors.data = [];
-
-            workerProcess.stdout.on('data', function (data) {
-                let string = String(data);
-                // console.log(string)
-                string = string.split('\n');
-                for(let i = 0; i < string.length; i ++){
-                    string[i] = string[i].trim();
-                    if(string[i] == 'keyPoints' || string[i] == 'cols' || string[i] == 'rows' || string[i] == 'descriptors'){
-                        flag = string[i];
-                        continue;
-                    }
-                    switch(flag){
-                        case 'keyPoints':
-                            let str = string[i].substring(1, string[i].length - 1);
-                            str = str.split(',');
-                            let obj = {};
-                            obj.x = parseFloat(str[0]);
-                            obj.y = parseFloat(str[1]);
-                            keyPoints.push(obj);
-                            break;
-                        case 'cols':
-                            descriptors.cols = parseInt(string[i]);
-                            break;
-                        case 'rows':
-                            descriptors.rows = parseInt(string[i]);
-                            break;
-                        case 'descriptors':
-                            let curStr = string[i].replace('[', '').replace(']', '').trim();
-                            curStr = curStr.split(/\s+/);
-                            curStr.forEach(cur => {
-                                let n = parseInt(cur);
-                                if(!isNaN(n)){
-                                    descriptors.data.push(parseInt(cur));
-                                }
-                            });
-                            break;
-                    }
-                }
-            });
-
-            workerProcess.stderr.on('data', function (data) {
-                console.log('stderr: ' + data);
-            });
-
-            workerProcess.on('close', (code) => {
-                sock.emit('openCvFeature', {feature: {keyPoints, descriptors}, isOrigin: data.isOrigin, startTime: new Date().getTime()})
-            });
-        }
     });
 });
 
