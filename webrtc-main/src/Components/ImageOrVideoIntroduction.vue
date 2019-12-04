@@ -27,9 +27,10 @@
             }
         },
         data() {
+            let productId = this.productId === -1 ? 0 : this.productId;
             return {
-                imageUrl: productData[this.productId].imageUrl,
-                videoUrl: productData[this.productId].videoUrl
+                imageUrl: productData[productId].imageUrl,
+                videoUrl: productData[productId].videoUrl
             }
         },
         methods: {

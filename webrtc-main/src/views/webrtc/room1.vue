@@ -17,14 +17,18 @@
         ></other-function>
         <!--文字消息部分-->
         <div class="text-box">
-            <textarea disabled :value="receiveText" ref="receive-text"></textarea>
+            <textarea disabled :value="textFromOthers" ref="receive-text"></textarea>
             <div class="send-box">
-                <input v-model="sendText" :disabled="isSendTextDisabled"/>
-                <button @click="sendMessage">发送</button>
+                <input v-model="textToOthers" :disabled="isSendTextDisabled"/>
+                <button @click="sendText">发送</button>
             </div>
         </div>
         <!--3D动画部分-->
-        <model v-if="isShowModel" :product-id="productId"></model>
+        <model v-if="isShowModel"
+               :product-id="productId"
+               :cameraStatus="cameraStatus"
+               @sendMessage="sendMessage"
+        ></model>
         <!--图文/视频介绍弹窗-->
         <transition name="fade">
             <image-or-video-introduction
@@ -77,17 +81,18 @@
                 account: this.$route.params.account,
                 peerList: {},
                 localStream: null,
-                receiveText: '',
-                sendText: '',
+                textFromOthers: '',
+                textToOthers: '',
                 isSendTextDisabled: true,
                 isUser: true,  //是否是前置摄像头
-                productId: 1,
+                productId: -1,
                 isShowIntroduction: false,
                 isShowImage: true,
                 isShowScan: false,
                 isOpenRemoteVideo: false,
-                isShowModel: true,
+                isShowModel: false,
                 isShowRobot: false,
+                cameraStatus: null
             }
         },
         beforeDestroy() {
@@ -218,7 +223,6 @@
                 }
                 peer.isOffer = v.isOffer ;
                 this.$set(this.peerList, v.account, peer);
-                console.log(this.peerList, 2222222222)
             },
             // DataChannel初始化
             createDataChannel(dataChannel){
@@ -231,10 +235,18 @@
                 } ;
                 dataChannel.onmessage = (e) => {
                     console.log('dataChannel数据：' + e.data) ;
-                    this.receiveText += this.receiveText === '' ? e.data : '\n' + e.data;
-                    this.$nextTick(() => {
-                        this.$refs['receive-text'].scrollTop = this.$refs['receive-text'].scrollHeight ;
-                    });
+                    let data = JSON.parse(e.data);
+                    if(data.type === 'text'){
+                        this.textFromOthers += this.textFromOthers === '' ? data.value : '\n' + data.value;
+                        this.$nextTick(() => {
+                            this.$refs['receive-text'].scrollTop = this.$refs['receive-text'].scrollHeight ;
+                        });
+                    } else if(data.type === 'match'){
+                        this.productId = data.productId;
+                        this.isShowModel = true;
+                    } else {
+                        this.cameraStatus = e.data;
+                    }
                 } ;
             },
             // 发送offer
@@ -351,21 +363,29 @@
                 })
             },
             // 通过DataChannel发送文字消息
-            sendMessage(){
-                if(this.sendText == ''){
+            sendText(){
+                if(this.textToOthers == ''){
                     return
                 }
-                let text = this.sendText ;
+                let text = this.textToOthers ;
                 text = this.account + ': ' + text ;
                 console.log(text)
-                for (let k in this.peerList) {
-                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(text) ;
-                }
-                this.receiveText += this.receiveText === '' ? text : '\n' + text;
+                // 文字消息类型数据
+                let data = {
+                    type: 'text',
+                    value: text
+                };
+                this.sendMessage(JSON.stringify(data));
+                this.textFromOthers += this.textFromOthers === '' ? text : '\n' + text;
                 this.$nextTick(() => {
                     this.$refs['receive-text'].scrollTop = this.$refs['receive-text'].scrollHeight ;
                 });
-                this.sendText = '' ;
+                this.textToOthers = '' ;
+            },
+            sendMessage(message){
+                for (let k in this.peerList) {
+                    this.peerList[k].dataChannel && this.peerList[k].dataChannel.send(message) ;
+                }
             },
             // 切换摄像头
             changeCamera(){
@@ -412,14 +432,21 @@
                 this.productId = id - 1;
                 this.isShowScan = false;
                 this.isShowModel = true;
+                let data = {
+                    type: 'match',
+                    productId: id - 1
+                };
+                this.sendMessage(JSON.stringify(data));
             },
             // 打开扫描框
             showScan() {
                 this.isShowScan = true;
+                this.isShowModel = false;
             },
             // 关闭扫描框
             closeScan() {
                 this.isShowScan = false;
+                this.isShowModel = this.productId === -1 ? false : true;
             },
             // 打开图片/视频介绍
             showIntroduction(type) {
@@ -494,7 +521,7 @@
                 font-size: 0;
                 white-space: nowrap;
                 overflow-x: scroll;
-                .remote-video-item{
+                /deep/ .remote-video-item{
                     position: relative;
                     font-size: 0;
                     display: none;
@@ -511,7 +538,7 @@
                         line-height: 3vh;
                     }
                 }
-                .remote-video-item:first-child{
+                /deep/ .remote-video-item:first-child{
                     display: inline-block;
                 }
             }

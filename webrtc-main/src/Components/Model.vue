@@ -3,10 +3,9 @@
 </template>
 
 <script>
-    import * as Three from 'three';
-    import OrbitControls from 'three-orbitcontrols';
-    import FbxLoader from 'three-fbx-loader';
-    import modelUrl from '../assets/model/panda.fbx';
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
     import productData from '../utils/data';
 
     export default {
@@ -15,7 +14,8 @@
             productId: {
                 required: true,
                 type: Number
-            }
+            },
+            cameraStatus: {}
         },
         data() {
             return {
@@ -23,97 +23,146 @@
                 scene: null,  // 场景
                 renderer: null,  // 渲染器
                 mesh: null,  //网格
-                mixers: [],
-                clocl: new Three.Clock(),
-                modelUrl: productData[this.productId].modelUrl
+                controls: null,
+                model: productData[this.productId].model
             }
         },
         watch: {
-            camera: {
+            productId: {
                 handler(value){
-
-                },
-                deep: true
+                    this.init();
+                    this.animate();
+                }
+            },
+            cameraStatus: {
+                handler(value){
+                    let data = JSON.parse(value);
+                    this.camera.position.copy(data.position);
+                    this.camera.rotation.copy(data.rotation);
+                    this.camera.quaternion.copy(data.quaternion);
+                }
             }
+            // position: camera.position,
+            // rotation: camera.rotation,
+            // quaternion: camera.quaternion
+            // "camera.rotation": {
+            //     handler(value, oldValue){
+            //         console.log(value, oldValue);
+            //     },
+            //     deep: true
+            // }
         },
         methods: {
-            init: function() {
+            init() {
                 let container = this.$refs['modelBox'];
-
-                this.scene = new Three.Scene();
-
-                // PerspectiveCamera参数：45度视野角、宽高比、最近平面和最远平面的坐标位置
-                this.camera = new Three.PerspectiveCamera(70, container.clientWidth/container.clientHeight, 0.01, 10);
-                this.camera.position.z = 1;
-                this.scene.add(this.camera);
-
-                // let light = new Three.DirectionalLight(0xffffff, 1.5);
-                // light.position.set(0,0,1);
-                // this.scene.add(light);
-
-                // 添加网格，一个网格包括一个几何形状geometry和一个材质material
-                // let geometry = new Three.BoxGeometry(0.2, 0.2, 0.2);
-                // let material = new Three.MeshNormalMaterial();
-                // // let material = new Three.MeshPhongMaterial( { color: 0x00ff00 } );
-                // let cube = new Three.Mesh(geometry, material);
-                //
-                // this.mesh = new Three.Object3D();
-                // this.mesh.add(cube);
-                //
-                // this.scene.add( this.mesh);
-
-                let light = new Three.HemisphereLight(0xffffff, 0x444444, 1.0);
-                light.position.set(0, 1, 0);
-                this.scene.add(light);
-                light = new Three.DirectionalLight(0xffffff, 1.0);
-                light.position.set(0, 1, 0);
-                this.scene.add(light);
-
-                let fbxLoader = new FbxLoader();
-                console.log(this.modelUrl)
-                this.scene.add(new Three.AxesHelper(5000));
-                fbxLoader.load(this.modelUrl, object => {
-                    console.log('222222')
-                    object.mixer = new Three.AnimationMixer(object);
-                    this.mixers.push(object.mixer);
-                    let action = object.mixer.clipAction(object.animations[0]);
-
-                    action.play();
-                    action.setDuration(18).play();
-                    // action.setEffectiveTimeScale ( 0.8 ).play();
-                    this.scene.add(object);
-                }, error=> {
-                    console.log(error);
-                });
-
-                // antialias，用于告知Three.js开启基于硬件的多重采样抗锯齿，使物体边缘平滑
-                // this.renderer = new Three.WebGLRenderer({antialias: true, alpha: true});
-                this.renderer = new Three.WebGLRenderer({alpha: true});
+                // antialias，用于告知THREE.js开启基于硬件的多重采样抗锯齿，使物体边缘平滑
+                // this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+                this.renderer = new THREE.WebGLRenderer({alpha: true});
                 this.renderer.setPixelRatio( window.devicePixelRatio );
                 this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.gammaOutput = true;
+                this.renderer.gammaFactor = 2.2;
+                this.renderer.physicallyCorrectLights = true;
                 container.appendChild(this.renderer.domElement);
 
-                let controls = new OrbitControls(this.camera, this.renderer.domElement);
-                //controls.target.set( 0, 12, 0 );
-                // this.camera.position.set(0, 200, 500);
-                controls.update();
-            },
-            animate: function() {
-                requestAnimationFrame(this.animate);
-                if ( this.mixers.length > 0 ) {
-                    for ( let i = 0; i < this.mixers.length; i ++ ) {
-                        let delta = this.clock.getDelta();
-                        this.mixers[i].update( delta );
+                this.scene = new THREE.Scene();
+
+                // PerspectiveCamera参数：45度视野角、宽高比、最近平面和最远平面的坐标位置
+                this.camera = new THREE.PerspectiveCamera(70, container.clientWidth/container.clientHeight, 0.001, 1000);
+                this.scene.add(this.camera);
+
+                this.addLight();
+
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+                let loadStartTime = performance.now();
+                let GltfLoader = new GLTFLoader();
+                this.scene.add(new THREE.AxesHelper(5000));
+                GltfLoader.load(this.model.url, gltf => {
+                    let object = gltf.scene;
+                    console.info( 'Load time: ' + ( performance.now() - loadStartTime ).toFixed( 2 ) + ' ms.' );
+                    if ( this.model.cameraPos ) {
+                        this.camera.position.copy( this.model.cameraPos );
                     }
-                }
-                // this.mesh.rotation.x += 0.01;
-                // this.mesh.rotation.y += 0.02;
+                    if ( this.model.center ) {
+                        this.controls.target.copy( this.model.center );
+                    }
+                    if ( this.model.objectRotation ) {
+                        object.rotation.copy( this.model.objectRotation );
+                    }
+                    this.scene.add(object);
+                }, undefined, error=> {
+                    console.log(error);
+                });
+            },
+            addLight() {
+                let ambient = new THREE.AmbientLight( 0xffffff );
+                this.scene.add( ambient );
+
+                let directionalLight = new THREE.DirectionalLight( 0xffffff, 4 );
+                directionalLight.position.set( 0, 0, 1 ).normalize();
+                this.scene.add( directionalLight );
+
+                let spot1 = new THREE.SpotLight( 0xffffff, 1 );
+                spot1.position.set( 5, 10, 5 );
+                spot1.angle = 0.50;
+                spot1.penumbra = 0.75;
+                spot1.intensity = 100;
+                spot1.decay = 2;
+
+                spot1.castShadow = true;
+                spot1.shadow.bias = 0.0001;
+                spot1.shadow.mapSize.width = 2048;
+                spot1.shadow.mapSize.height = 2048;
+
+                this.scene.add( spot1 );
+            },
+            animate() {
+                requestAnimationFrame(this.animate);
+                this.controls.update();
                 this.renderer.render(this.scene, this.camera);
+            },
+            sendControlMessage() {
+                let data = {
+                    type: 'controlMessage',
+                    startTime: new Date().getTime(),
+                    position: this.camera.position,
+                    rotation: this.camera.rotation,
+                    quaternion: this.camera.quaternion
+                };
+                this.$emit('sendMessage', JSON.stringify(data));
             }
         },
         mounted() {
             this.init();
-            this.animate()
+            this.animate();
+
+            let container = this.$refs['modelBox'];
+            container = container.getElementsByTagName('canvas')[0];
+            container.addEventListener('mousemove', () => {
+                console.log('222')
+                this.sendControlMessage();
+            });
+            container.addEventListener('mousedown', () => {
+                console.log('111')
+                this.sendControlMessage();
+            });
+            container.addEventListener('mouseup', () => {
+                console.log('333')
+                this.sendControlMessage();
+            });
+            container.addEventListener('touchstart', () => {
+                console.log('444')
+                this.sendControlMessage();
+            });
+            container.addEventListener('touchmove', () => {
+                console.log('555')
+                this.sendControlMessage();
+            });
+            container.addEventListener('touchend', () => {
+                console.log('666')
+                this.sendControlMessage();
+            });
         }
     }
 </script>

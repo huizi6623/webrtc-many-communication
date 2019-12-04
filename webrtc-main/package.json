@@ -13,8 +13,6 @@
     "object-sizeof": "^1.5.1",
     "socket.io": "^2.1.1",
     "three": "^0.110.0",
-    "three-fbx-loader": "^1.0.3",
-    "three-orbitcontrols": "^2.110.1",
     "vue": "^2.5.17",
     "vue-router": "^3.0.1",
     "vuex": "^3.0.1"
