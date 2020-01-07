@@ -5,10 +5,10 @@
             <input type="text" v-model="account">
         </div>
         <div class="item-box">
-            <label>房间号：</label>
+            <label>客服室：</label>
             <input type="text" v-model="roomid">
         </div>
-        <button @click="join">加入房间</button>
+        <button @click="join">呼叫客服</button>
     </div>
 </template>
 
@@ -49,9 +49,9 @@
         height: 40px;
         line-height: 40px;
         margin: 10px 0;
+        flex: 1;
     }
     input{
-        flex: 1;
         box-sizing: border-box;
         border: 1px solid #5ac6ca;
         border-radius: 2px;

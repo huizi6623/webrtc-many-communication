@@ -37,7 +37,7 @@
                 canvas.width = w;
                 canvas.height = h;
 
-                this.capTimer = setInterval(takePicture, 1000);//间隔1000ms截取视频流内容
+                this.capTimer = setInterval(takePicture, 500);//间隔1000ms截取视频流内容
                 clearPhoto();//清除画布上的内容
 
                 function takePicture(){

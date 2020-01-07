@@ -5,28 +5,43 @@
 // const fs = require('fs');
 const Koa = require('koa'); // 封装了nodeJs的http模块，由express原班人马打造
 const path = require('path');
-const http = require('http');
+const https = require('https');
 const koaSend = require('koa-send');
+const koaSslify = require('koa-sslify').default;
+const fs = require('fs');
 const static = require('koa-static');  // 处理静态资源
-const socket = require('koa-socket');
+// const socket = require('koa-socket');
+const socket = require('socket.io');
 const child_process = require('child_process');
 const users = {}; // 保存用户
-
-const io = new socket({
-    ioOptions: {
-        pingTimeout: 10000,
-        pingInterval: 5000,
-    }
-});
 
 // 创建一个Koa对象表示web app本身:
 const app = new Koa();
 
-// socket注入应用
-io.attach(app);
+app.use(koaSslify());
 app.use(static(
     path.join( __dirname,  './public')
 ));
+
+const certificate = {
+    key: fs.readFileSync('./private.key'),
+    // ca: [fs.readFileSync('./ca-cert.pem')],
+    cert: fs.readFileSync('./mydomain.crt')
+};
+
+const serve = https.createServer(certificate, app.callback());
+serve.listen(8880, () => {
+    console.log(`server running success at 8880`)
+});
+
+const io = socket.listen(serve);
+
+// socket注入应用
+// io.attach(app);
+
+// app.listen(8880, () => {
+//     console.log(`server running success at 8880`)
+// });
 
 // 对于任何请求，app将调用该异步函数处理请求：
 app.use(async (ctx, next) => {
@@ -45,7 +60,7 @@ app.use(async (ctx, next) => {
     }
 });
 
-app._io.on( 'connection', sock => {
+io.on( 'connection', sock => {
     let roomId = null;
     let account = null;
 
@@ -62,18 +77,18 @@ app._io.on( 'connection', sock => {
                 account: data.account,
                 id: sock.id,
                 socket: sock,
-                time: 0
+                // time: 0
             };
             let arr = users[data.roomid].filter(v => v.account === data.account);
             if (!arr.length) {
                 users[data.roomid].push(obj);
             }
-
+            console.log('UserInfo:', users);
             let params = [];
             users[data.roomid].forEach((item) => {
                 params.push({account: item.account});
             });
-            app._io.in(data.roomid).emit('joined', params); // 发给房间内所有人
+            io.in(data.roomid).emit('joined', params); // 发给房间内所有人
             // sock.to(data.roomid).emit('joined',data.account);
         });
     });
@@ -95,8 +110,13 @@ app._io.on( 'connection', sock => {
         }
 
         sock.leave(roomId);    // 退出房间
-        app._io.in(roomId).emit('leave', {account: account, roomId: roomId});
+        if(users[roomId].length) {
+            io.in(roomId).emit('leave', {account: account, roomId: roomId});
+        } else {
+            delete users[roomId];
+        }
         console.log(account + '退出了房间' + roomId);
+        console.log('UserInfo:', users);
     });
     sock.on('offer', data=>{
         //console.log('offer', data.account);
@@ -121,7 +141,7 @@ app._io.on( 'connection', sock => {
                 },
             },
             "userInfo": {
-                "apiKey": "22e009b1199a47a0bd4fc4c76234e49d",
+                "apiKey": "2467b90d49b1432da1f6671f1ab4d81e",
                 "userId": "511155"
             }
         };
@@ -139,7 +159,7 @@ app._io.on( 'connection', sock => {
             }
         };
         let answer = '';
-        let res = http.request(options, res => {
+        let res = https.request(options, res => {
             console.log("response: " + res.statusCode);
             res.on('data',function(data){
                 answer += data;
@@ -154,7 +174,7 @@ app._io.on( 'connection', sock => {
         res.end();
     });
     sock.on('speed', data => {
-        console.log('设备处理速度',data,'ops/sec');
+        // console.log('设备处理速度',data,'ops/sec');
     });
     sock.on('time', data => {
 
@@ -203,9 +223,4 @@ app._io.on( 'connection', sock => {
     sock.on('d2dTime', data => {
         console.log('d2d时延：' + data.time + ' ' + data.curTime + ' ' + data.startTime);
     });
-});
-
-// https.createServer(options, app.callback())
-app.listen(3001, () => {
-    console.log(`server running success at 3001`)
 });

@@ -70,7 +70,7 @@
             }
             .img-video-box{
                 width: 100%;
-                max-height: 80vh;
+                max-height: 70vh;
                 border-radius: 5px;
                 box-shadow: 0 0 10px 2px #ffcf06;
                 overflow: scroll;

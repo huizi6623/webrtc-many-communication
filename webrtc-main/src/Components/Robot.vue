@@ -101,7 +101,7 @@
             }
             .robot-box{
                 width: 100%;
-                height: 80vh;
+                height: 70vh;
                 border-radius: 5px;
                 box-shadow: 0 0 10px 2px #ffcf06;
                 overflow: scroll;

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+    let X = [
+        [0,1,1,1,1,1],
+        [1,0,1,1,1,1],
+        [1,1,0,1,1,1],
+        [1,1,1,0,1,1],
+        [1,1,1,1,0,1],
+        [1,1,1,1,1,0],
+    ];
+    let T = [
+        [0, 231, 198, 211, 253, 312],
+        [231, 0, 178, 201, 240, 303],
+        [198, 178, 0, 222, 278, 341],
+        [211, 201, 222, 0, 217, 292],
+        [253, 240, 278, 217, 0, 233],
+        [312, 303, 341, 292, 233, 0],
+    ];
+    let E = [
+        [0, 305, 279, 333, 406, 368],
+        [305, 0, 287, 305, 265, 245],
+        [279, 287, 0, 312, 222, 243],
+        [333, 305, 312, 0, 365, 368],
+        [406, 265, 222, 365, 0, 341],
+        [268, 245, 243, 368, 341, 0],
+    ];
+    let Tmin = 607, Tmax = 653, Emin = 891, Emax = 999;
+    let x = 0, a = 0.3;
+    let e = [];
+    let value = 0;
+    console.time('com');
+    for(let i = 0; i < 5000; i ++){
+        let map = [];
+        X[x].forEach((item, index) => {
+            if(item){
+                map.push(index);
+            }
+        });
+        // console.log(map)
+        let left = map.splice(Math.floor(Math.random()*map.length), 1)[0];
+        let right = map[Math.floor(Math.random()*map.length)];
+        // console.log(left, right);
+
+        let Ttotal = e.reduce((pre, cur) => {
+            return pre + T[cur[0]][cur[1]];
+        }, 0);
+        let Etotal = e.reduce((pre, cur) => {
+            return pre + E[cur[0]][cur[1]];
+        }, 0);
+        // console.log(Ttotal, Etotal);
+        // console.log(a*(Ttotal + T[x][left] - Tmin)/(Tmax-Tmin), (1-a)*(Etotal + E[x][left] - Emin)/(Emax-Emin));
+        let leftValue = a*(Ttotal + T[x][left] - Tmin)/(Tmax-Tmin) + (1-a)*(Etotal + E[x][left] - Emin)/(Emax-Emin);
+        let rightValue = a*(Ttotal + T[x][right] - Tmin)/(Tmax-Tmin) + (1-a)*(Etotal + E[x][right] - Emin)/(Emax-Emin);
+        let next ;
+        if(leftValue < rightValue){
+            next = left;
+            value = leftValue;
+        } else {
+            next = right;
+            value = rightValue;
+        }
+        let curE = [x, next].sort();
+        // console.log(e, curE, x);
+        if(! e.some(item => {
+            return item.toString() === curE.toString();
+        })){
+            e.push(curE);
+            if(! e.some(item => {
+                return item[0] == 0 || item[1] == 0 ;
+            })){
+                value += 100;
+            } else if(e.length != X.length-1){
+                value += 100;
+            }
+        }
+        x = next;
+    }
+    console.timeEnd('com');
+</script>
+</body>
+</html>

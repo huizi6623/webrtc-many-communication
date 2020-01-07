@@ -4,7 +4,10 @@
 
 <script>
     import * as THREE from 'three';
-    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+    import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls';
+    import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
+    import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
     import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
     import productData from '../utils/data';
 
@@ -42,21 +45,12 @@
                     this.camera.quaternion.copy(data.quaternion);
                 }
             }
-            // position: camera.position,
-            // rotation: camera.rotation,
-            // quaternion: camera.quaternion
-            // "camera.rotation": {
-            //     handler(value, oldValue){
-            //         console.log(value, oldValue);
-            //     },
-            //     deep: true
-            // }
         },
         methods: {
             init() {
                 let container = this.$refs['modelBox'];
                 // antialias，用于告知THREE.js开启基于硬件的多重采样抗锯齿，使物体边缘平滑
-                // this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+                // this.renderer = new THREE.WebGLRenderer({antialias: true});
                 this.renderer = new THREE.WebGLRenderer({alpha: true});
                 this.renderer.setPixelRatio( window.devicePixelRatio );
                 this.renderer.setSize(container.clientWidth, container.clientHeight);
@@ -73,13 +67,20 @@
 
                 this.addLight();
 
-                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls = new TrackballControls(this.camera, this.renderer.domElement);
+                //是否可以缩放
+                // this.controls.enableZoom = true;
+                // 是否自动旋转
+                // this.controls.autoRotate = true;
+                // 是否开启右键拖拽
+                // this.controls.enablePan = true;
 
                 let loadStartTime = performance.now();
                 let GltfLoader = new GLTFLoader();
-                this.scene.add(new THREE.AxesHelper(5000));
+                // this.scene.add(new THREE.AxesHelper(5000));
                 GltfLoader.load(this.model.url, gltf => {
                     let object = gltf.scene;
+                    console.log(object, 'object');
                     console.info( 'Load time: ' + ( performance.now() - loadStartTime ).toFixed( 2 ) + ' ms.' );
                     if ( this.model.cameraPos ) {
                         this.camera.position.copy( this.model.cameraPos );
@@ -94,6 +95,20 @@
                 }, undefined, error=> {
                     console.log(error);
                 });
+                // // 变换控件对象
+                // var transformControls = new TransformControls(this.camera, this.renderer.domElement);
+                // // 添加到场景中
+                // this.scene.add(transformControls);
+                //
+                // // 拖拽控件对象
+                // var dragControls = new DragControls(this.scene.children,this.camera,this.renderer.domElement);
+                // // 设置鼠标事件
+                // dragControls.addEventListener('hoveron', function (event) {
+                //     // 变换控件对象与选中的对戏那个object绑定
+                //     transformControls.attach(event.object);
+                //     // 设置三维坐标轴的大小，这个坐标轴不会随着模型的缩放而缩放
+                //     transformControls.setSize(0.4);
+                // });
             },
             addLight() {
                 let ambient = new THREE.AmbientLight( 0xffffff );
@@ -130,6 +145,7 @@
                     rotation: this.camera.rotation,
                     quaternion: this.camera.quaternion
                 };
+                // console.log(this.camera, 'daaaaa');
                 this.$emit('sendMessage', JSON.stringify(data));
             }
         },
@@ -140,27 +156,21 @@
             let container = this.$refs['modelBox'];
             container = container.getElementsByTagName('canvas')[0];
             container.addEventListener('mousemove', () => {
-                console.log('222')
                 this.sendControlMessage();
             });
             container.addEventListener('mousedown', () => {
-                console.log('111')
                 this.sendControlMessage();
             });
             container.addEventListener('mouseup', () => {
-                console.log('333')
                 this.sendControlMessage();
             });
             container.addEventListener('touchstart', () => {
-                console.log('444')
                 this.sendControlMessage();
             });
             container.addEventListener('touchmove', () => {
-                console.log('555')
                 this.sendControlMessage();
             });
             container.addEventListener('touchend', () => {
-                console.log('666')
                 this.sendControlMessage();
             });
         }

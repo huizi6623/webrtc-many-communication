@@ -92,7 +92,7 @@
                 isOpenRemoteVideo: false,
                 isShowModel: false,
                 isShowRobot: false,
-                cameraStatus: null
+                cameraStatus: null,
             }
         },
         beforeDestroy() {
@@ -110,8 +110,8 @@
             // 获取视频流
             getUserMedia() {
                 let constraints = this.isUser ?
-                    { audio: true, video: { facingMode: 'user' } } :
-                    { audio: true, video: { facingMode: { exact: "environment" } } };
+                    { audio: false, video: { facingMode: 'user' } } :
+                    { audio: false, video: { facingMode: { exact: "environment" } } };
                 // 老的浏览器可能根本没有实现 mediaDevices，所以我们可以先设置一个空的对象
                 let mediaDevices = navigator.mediaDevices;
                 if (mediaDevices === undefined) {
@@ -276,7 +276,7 @@
                             obj.isOffer = arr[0] == this.account ? true : false ;
                             if (!this.peerList[obj.account] && v.account !== this.account) {
                                 if(v !== data[0]) {
-                                    console.log(v.account + '进入了房间');
+                                    alert(v.account + '进入了客服室');
                                 }
                                 this.getPeerConnection(obj);
                                 if(obj.isOffer){
@@ -285,7 +285,7 @@
                             }
                         });
                     } else if(data.length === 1) {
-                        console.log( data[0].account + '创建了房间' + this.roomid);
+                        alert( data[0].account + '创建了客服室' + this.roomid);
                     }
                 });
                 // 接收服务器中转的offer并回复answer
@@ -347,7 +347,7 @@
                 });
                 // 监听客户端leave事件
                 socket.on('leave', data => {
-                    console.log(data.account + '离开了房间！');
+                    alert(data.account + '离开了客服室！');
                     let key = [data.account, this.account].sort().join('-');
                     let dom = document.querySelector('#' + key);
                     if (dom) {
@@ -458,7 +458,7 @@
                 this.isShowIntroduction = false;
             },
             // 打开图灵机器人
-            showRobot(type) {
+            showRobot() {
                 this.isShowRobot = true;
             },
             // 关闭图灵机器人
@@ -550,10 +550,10 @@
             .open-video-arrow{
                 transform: rotate(270deg);
             }
-            .remote-video-item{
+            /deep/ .remote-video-item{
                 display: inline-block !important;
             }
-            .remote-video-item ~ .remote-video-item{
+            /deep/ .remote-video-item ~ .remote-video-item{
                 margin-left: 5vw;
             }
         }
@@ -562,16 +562,16 @@
         position: absolute;
         bottom: 0;
         width: 100%;
-        height: 210px;
+        height: 140px;
         z-index: 2;
         textarea {
             width: 100%;
-            height: 170px;
+            height: 100px;
             bottom: 40px;
             box-sizing: border-box;
             border: none;
             background: none;
-            color: rgba(255, 0, 0, .8);
+            color: red;
             font-weight: bold;
             font-size: 14px;
             line-height: 20px;

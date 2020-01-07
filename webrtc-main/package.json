@@ -23,8 +23,8 @@
     "@vue/cli-service": "^3.0.1",
     "babel-polyfill": "^6.26.0",
     "benchmark": "^2.1.4",
-    "file-loader": "^4.1.0",
     "node-sass": "^4.9.0",
+    "file-loader": "^4.1.0",
     "sass-loader": "^7.0.1",
     "vant": "^2.2.12",
     "vue-template-compiler": "^2.5.17"
