@@ -49,13 +49,13 @@
         height: 40px;
         line-height: 40px;
         margin: 10px 0;
-        flex: 1;
     }
     input{
         box-sizing: border-box;
         border: 1px solid #5ac6ca;
         border-radius: 2px;
         padding: 0 10px;
+        flex: 1;
     }
     button {
         background-color: #5ac6ca;

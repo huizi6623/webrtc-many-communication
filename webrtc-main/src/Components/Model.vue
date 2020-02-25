@@ -67,13 +67,13 @@
 
                 this.addLight();
 
-                this.controls = new TrackballControls(this.camera, this.renderer.domElement);
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 //是否可以缩放
                 // this.controls.enableZoom = true;
                 // 是否自动旋转
                 // this.controls.autoRotate = true;
                 // 是否开启右键拖拽
-                // this.controls.enablePan = true;
+                this.controls.enablePan = false;
 
                 let loadStartTime = performance.now();
                 let GltfLoader = new GLTFLoader();
