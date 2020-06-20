@@ -30,8 +30,8 @@ const certificate = {
 };
 
 const serve = https.createServer(certificate, app.callback());
-serve.listen(8880, () => {
-    console.log(`server running success at 8880`)
+serve.listen(3001, () => {
+    console.log(`server running success at 3001`)
 });
 
 const io = socket.listen(serve);

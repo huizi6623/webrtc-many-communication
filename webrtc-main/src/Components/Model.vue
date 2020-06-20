@@ -145,7 +145,7 @@
                     rotation: this.camera.rotation,
                     quaternion: this.camera.quaternion
                 };
-                // console.log(this.camera, 'daaaaa');
+                console.log(this.camera, 'daaaaa');
                 this.$emit('sendMessage', JSON.stringify(data));
             }
         },

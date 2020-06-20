@@ -21,7 +21,7 @@ module.exports = {
         proxy: {
             '/': {
                 ws: false, // websocket 不需要代理
-                target: 'http://10.128.227.196:3001',
+                target: 'https://10.38.7.17:3001',
                 changeOrigin: true
             }
         },
