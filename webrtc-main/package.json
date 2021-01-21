@@ -11,7 +11,7 @@
   "dependencies": {
     "jsfeat": "0.0.8",
     "object-sizeof": "^1.5.1",
-    "socket.io": "^2.1.1",
+    "socket.io": "^2.4.0",
     "three": "^0.110.0",
     "vue": "^2.5.17",
     "vue-router": "^3.0.1",
