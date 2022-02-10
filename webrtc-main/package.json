@@ -23,7 +23,7 @@
     "@vue/cli-service": "^3.0.1",
     "babel-polyfill": "^6.26.0",
     "benchmark": "^2.1.4",
-    "node-sass": "^4.9.0",
+    "node-sass": "^7.0.0",
     "file-loader": "^4.1.0",
     "sass-loader": "^7.0.1",
     "vant": "^2.2.12",
